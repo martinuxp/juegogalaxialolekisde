@@ -90,6 +90,19 @@ $('saltarCine').onclick = () => saltarDespertar();
 addEventListener('keydown', e => { if (juego.modo === 'cine' && (e.code === 'Escape' || e.code === 'Enter')) saltarDespertar(); });
 escuchar('agua', () => toast('¡Splash!<small>El agua no te sostiene: vuelves a tierra</small>', 1600));
 
+/* ---------- HORIZONTAL OBLIGATORIO EN CELULAR ----------
+   El navegador no deja girar la pantalla solo. Lo que sí podemos:
+   1) en vertical, tapar todo con "Gira tu celular" (CSS) y pausar;
+   2) en Android, al primer toque pedir pantalla completa y bloquear en horizontal. */
+const vertical = matchMedia('(orientation: portrait) and (pointer: coarse)');
+addEventListener('pointerdown', async () => {
+  if (!matchMedia('(pointer: coarse)').matches || document.fullscreenElement) return;
+  try {
+    await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+    await screen.orientation.lock('landscape');
+  } catch (e) { /* iPhone y algunos navegadores no lo permiten: queda el aviso de girar */ }
+}, { passive: true });
+
 /* ---------- BUCLE PRINCIPAL ---------- */
 const DT = 1 / 120;
 let last = performance.now(), acc = 0, tiempo = 0;
@@ -115,7 +128,7 @@ function frame(now) {
   }
   if (juego.modo === 'dialogo') { renderer.clear(); return; }
 
-  const jugando = juego.modo === 'juego';
+  const jugando = juego.modo === 'juego' && !vertical.matches;   // en vertical el juego espera
   if (jugando) {
     acc += dt * juego.timeScale;
     let n = 0;
@@ -130,7 +143,7 @@ function frame(now) {
   animarMundo(dt, tiempo);
   actualizarEscape(dt);
 
-  if (!actualizarDespertar(dt)) updateCamera(dt);
+  if (!actualizarDespertar(vertical.matches ? 0 : dt)) updateCamera(dt);
   renderer.render(scene, camera);
   if (jugando) actualizarHUD(dt);
 }

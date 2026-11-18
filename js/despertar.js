@@ -19,13 +19,19 @@ const $ = id => document.getElementById(id);
 /* ---------------------------------------------------------
    1) DIÁLOGO (texto escrito por el grupo; %NAME% = nombre del jugador)
    --------------------------------------------------------- */
+// Una línea por pantalla, para que vaya pausado. Cada una se escribe sola,
+// espera un momento y pasa a la siguiente (tocar la adelanta).
 const DIALOGO = [
-  '%NAME%… despierta, tienes una misión. Nuestra luna fue robada. Así como escuchas.',
-  'Súbete al cañón y recupérala, si no, las mareas de nuestro mundo que mantienen nuestra vida no serán suficientes con el sol para que nuestro aire esté limpio.',
-  '¡Ve, %NAME%, tú puedes!',
+  '%NAME%… Despierta.',
+  '%NAME%, tienes una misión.',
+  'Nuestra luna fue robada.',
+  'Sí, así como escuchas.',
+  'Súbete al cañón del planeta Corazón y recupera nuestra luna.',
+  'Sin ella, las mareas del Sol no serán suficientes para mantener la vida.',
+  '¡Tú puedes, %NAME%!',
 ];
 
-let linea = 0, escribiendo = null, alTerminar = null;
+let linea = 0, escribiendo = null, espera = null, alTerminar = null;
 
 function mostrarLinea() {
   const nombre = ajustes.nombre || 'pequeñ@';
@@ -33,29 +39,46 @@ function mostrarLinea() {
   const el = $('hTexto');
   el.textContent = '';
   el.classList.add('ver');
+  el.dataset.completo = txt;
   let i = 0;
   clearInterval(escribiendo);
   escribiendo = setInterval(() => {      // efecto máquina de escribir
     i++;
     el.textContent = txt.slice(0, i);
-    if (i >= txt.length) { clearInterval(escribiendo); escribiendo = null; }
-  }, 32);
-  el.dataset.completo = txt;
+    if (i >= txt.length) { clearInterval(escribiendo); escribiendo = null; esperarYSeguir(txt); }
+  }, 42);
+}
+
+/** Deja leer la línea (más tiempo si es larga) y pasa sola a la siguiente. */
+function esperarYSeguir(txt) {
+  clearTimeout(espera);
+  espera = setTimeout(siguiente, 1300 + txt.length * 28);
+}
+
+/** Se desvanece la línea actual y aparece la siguiente. */
+const enVertical = matchMedia('(orientation: portrait) and (pointer: coarse)');
+function siguiente() {
+  clearTimeout(espera);
+  if (enVertical.matches) { espera = setTimeout(siguiente, 500); return; }   // espera a que gire el celular
+  $('hTexto').classList.remove('ver');
+  linea++;
+  if (linea >= DIALOGO.length) setTimeout(terminarDialogo, 900);
+  else setTimeout(mostrarLinea, 750);
 }
 
 function avanzar() {
   if (escribiendo) {                       // si todavía escribe, mostrar la línea entera
     clearInterval(escribiendo); escribiendo = null;
     $('hTexto').textContent = $('hTexto').dataset.completo;
+    esperarYSeguir($('hTexto').dataset.completo);
     return;
   }
-  linea++;
-  if (linea >= DIALOGO.length) terminarDialogo();
-  else mostrarLinea();
+  siguiente();
 }
 
 function terminarDialogo() {
-  clearInterval(escribiendo); escribiendo = null;
+  clearInterval(escribiendo); escribiendo = null; clearTimeout(espera);
+  if ($('historia').classList.contains('oculto')) return;
   $('historia').classList.add('oculto');
   const fn = alTerminar; alTerminar = null;
   if (fn) fn();

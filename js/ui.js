@@ -62,9 +62,15 @@ export function tituloNivel() {
   toast(`Nivel ${def.numero} · ${def.nombre}<small>${def.ley}</small>`, 3000);
 }
 
-/* ---------- botón SÚPER: aparece cuando lo desbloqueas ---------- */
+/* ---------- botón SÚPER: aparece arriba del cañón (o si ya tienes el supersalto) ---------- */
+let etiquetaSuper = '';
 function actualizarBotonSuper() {
-  $('bSuper').classList.toggle('oculto', !juego.jugador.tieneSuper);
+  const p = juego.jugador;
+  const enCanon = !!juego.enCanon;
+  $('bSuper').classList.toggle('oculto', !(p.tieneSuper || enCanon));
+  $('bSuper').classList.toggle('llamar', enCanon && p.state !== 'carga');   // late para que lo veas
+  const txt = enCanon ? 'CAÑÓN' : 'SÚPER';
+  if (txt !== etiquetaSuper) { $('bSuper').textContent = txt; etiquetaSuper = txt; }
 }
 
 /* ---------- barra del supersalto ---------- */
