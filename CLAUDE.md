@@ -20,24 +20,26 @@ Proyecto escolar de Física (2° medio, Liceo Camilo Henríquez, Temuco; profeso
 - **Planetas de Kepler:** lunas en órbita.
 - **Aestus:** mareas y planeta de los ladrones.
 
-## Mecánicas por implementar
-1. **Supersalto por velocidad de escape** (primero, para el Hito 2): `v = √(2·g·r)`.
+## Mecánicas
+1. **Velocidad de escape** ✓ (18 nov): cañón de Columba (nivel 1) y SÚPER en el Laboratorio. Barra con marca de `v_esc = √(2GM/r)`, línea punteada que predice el vuelo con la misma función `pasoNewton` (leapfrog) que mueve al jugador. Para llegar a Ícaro basta ~75 % de `v_esc` (como las misiones a la Luna).
 2. **Órbitas de Kepler:** `v = √(GM/a)`, `T² ∝ a³`.
-3. **Mareas:** `h(θ) ∝ (3cos²θ − 1)/2`. El Sol también causa mareas, más débiles.
+3. **Mareas:** `h(θ) ∝ (3cos²θ − 1)/2`. El Sol también causa mareas, más débiles. Ya se ven en el mar del menú (esfera estirada 1+2ε / 1−ε hacia la luna).
 4. Nivel final que combina todo.
 5. Multijugador (SHOULD).
 
 ## Estado técnico
-Un solo `index.html` con Three.js 0.170.0 (módulos ES por importmap desde jsDelivr, ruta `three/addons/`). Mobile first, con joystick táctil, botones y teclado.
-- **Física:** `g = g0·(R/r)²`, manda el planeta con más `g` en cada punto, colisiones esféricas, el «arriba» del jugador se alinea con la gravedad, velocidades proyectadas al plano tangente, paso fijo 1/120 s, coyote time, buffer de salto, salto de altura variable, dash que sigue la curvatura, puño en suelo y pisotón en el aire, anillos de lanzamiento (curva de Bézier entre planetas), enemigos chico/mediano/grande (el grande solo recibe daño del pisotón y embiste).
-- **Estilo:** cartoon liviano al estilo Content Warning. `MeshToonMaterial` con 3 tonos, contorno negro por back-face, planetas de icosfera con color por vértice, grano CSS.
-- **Protagonista:** chibi más ancho que alto de lado, casco redondo transparente con un planeta pequeño con ojitos cartoon adentro. 🎨 cambia el color del traje (5 colores) y 🎩 cambia el accesorio (sombrero de copa, lazo, nada). Se guarda en `localStorage`.
-- **Gancho de pruebas:** `window.__game` expone player, enemies, input, PLANETS, step, cam y pause.
+Módulos ES sin bundler. Three.js 0.170.0 copiado en `js/vendor/three/` (importmap en `index.html`). **No abre con doble clic**: hay que servirlo (GitHub Pages o `python -m http.server`). Mobile first, con joystick táctil, botones y teclado. Ver la tabla de archivos en `README.md`.
+- **Física (`js/fisica.js`, sin DOM):** `g = g0·(R/r)²`, manda el planeta con más `g`, colisiones esféricas (planetas, islas y rocas), `superficieEn()` para poner cosas en el suelo, `pasoNewton` + `simularTrayectoria` para vuelos. Pruebas: `node pruebas/fisica.test.mjs`.
+- **Jugador:** paso fijo 1/120 s, coyote time, buffer, salto variable, dash que sigue la curvatura, puño/pisotón, estados `carga`/`vuelo` (escape.js), `dormido` (cinemática), mar no sólido (vuelve a `seguro`).
+- **Niveles:** datos en `js/niveles/*.js` (planetas con `mar`, `islas`, `rocas`, `canon`, `flores`, `carteles`, `enemigos`, `meta`). Nivel 1 Columba listo; el resto falta. Laboratorio = mapa debug antiguo con anillos Bézier (no son física).
+- **Menú:** playa de Columba con niebla, rayos falsos, luna de día y marea (`js/columba3d.js`). Antes de la historia hay luna; después, sin luna y gris; `nivelesCompletos` le devuelve color, mar y luna.
+- **Historia:** diálogo en negro (texto del grupo, `%NAME%`) + cinemática del despertar en la cama de flores (`js/despertar.js`).
+- **Personalización:** traje (5), accesorio (3), nombre, dificultad 7/5/3 corazones, g×. Se guarda en `localStorage` (`almaLunarAjustes`).
+- **Gancho de pruebas:** `window.__game` expone juego, player, step, ajustes, enemies(), jugarNivel(i), laboratorio(), menu(), columba.
 - **Pendiente:**
-  - La luna dentro del casco es de muestra. Debe aparecer al recuperar un fragmento del alma lunar.
+  - La lunita del casco aparece al tomar un fragmento (los fragmentos parten en Ícaro).
   - Los enemigos se parecen al protagonista. La tribu de Aestus necesita otra silueta.
   - Falta probar el salto y la cámara en un celular real.
-  - Plan de modularización: `js/fisica.js`, `jugador.js`, `enemigos.js`, `mecanicas/{escape,kepler,mareas}.js`, `niveles/*.js`, `ui.js`, `red.js`.
 
 El plan completo está en el doc «Alma Lunar · Plan del proyecto» (Claude Docs).
 
