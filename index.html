@@ -3,67 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Prototipo Gravedad · Mapa Debug</title>
-<style>
-  :root{
-    --sl:env(safe-area-inset-left,0px); --sr:env(safe-area-inset-right,0px);
-    --st:env(safe-area-inset-top,0px);  --sb:env(safe-area-inset-bottom,0px);
-    --ui:rgba(255,255,255,.14); --uiB:rgba(255,255,255,.35);
-  }
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;height:100%;overflow:hidden;background:#05060f;color:#fff;
-    font-family:ui-rounded,system-ui,-apple-system,"Segoe UI",sans-serif;
-    touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
-  canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
-  #touch{position:fixed;inset:0;z-index:1}
-  #grain{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.07;background-size:256px 256px}
-
-  /* barra superior */
-  #top{position:fixed;z-index:5;top:calc(8px + var(--st));left:calc(10px + var(--sl));right:calc(10px + var(--sr));
-    display:flex;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none}
-  #hearts{font-size:17px;letter-spacing:1px;white-space:nowrap;text-shadow:0 2px 6px #000;transition:transform .15s}
-  #hearts.hit{transform:scale(1.25)}
-  #hearts .off{opacity:.22}
-  #tools{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;pointer-events:auto;max-width:calc(100vw - 130px)}
-  .tb{background:var(--ui);border:1px solid var(--uiB);color:#fff;border-radius:10px;padding:7px 8px;
-    font:600 12px ui-monospace,Menlo,monospace;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-  .tb.on{background:rgba(120,200,255,.35)}
-
-  #dbg{position:fixed;z-index:4;top:calc(96px + var(--st));left:calc(10px + var(--sl));
-    font:11px/1.45 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.45);padding:8px 10px;border-radius:10px;
-    pointer-events:none;white-space:pre;max-width:calc(100vw - 20px)}
-  #dbg b{color:#8fd3ff;font-weight:600}
-
-  /* joystick */
-  #joy{position:fixed;z-index:3;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;
-    border:2px solid var(--uiB);background:rgba(255,255,255,.06);display:none;pointer-events:none}
-  #knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;
-    background:rgba(255,255,255,.35);border:2px solid rgba(255,255,255,.6)}
-  #joyHint{position:fixed;z-index:2;left:calc(28px + var(--sl));bottom:calc(30px + var(--sb));
-    width:110px;height:110px;border-radius:50%;border:2px dashed rgba(255,255,255,.18);pointer-events:none;
-    display:grid;place-items:center;font-size:11px;color:rgba(255,255,255,.4);text-align:center}
-
-  /* botones de acción */
-  .ab{position:fixed;z-index:5;border-radius:50%;border:2px solid var(--uiB);background:var(--ui);color:#fff;
-    font:800 12px system-ui,sans-serif;letter-spacing:.5px;display:grid;place-items:center;touch-action:none;
-    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-  .ab.down{background:rgba(255,255,255,.4);transform:scale(.93)}
-  #bJump{width:86px;height:86px;right:calc(18px + var(--sr));bottom:calc(24px + var(--sb));border-color:#7fd1ff}
-  #bAtk{width:70px;height:70px;right:calc(116px + var(--sr));bottom:calc(30px + var(--sb));border-color:#ff8f8f}
-  #bDash{width:66px;height:66px;right:calc(36px + var(--sr));bottom:calc(122px + var(--sb));border-color:#ffd36b}
-
-  #intro{position:fixed;inset:0;z-index:10;background:rgba(5,6,15,.82);display:grid;place-items:center;padding:24px}
-  #intro .card{max-width:420px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);
-    border-radius:18px;padding:20px 22px;font-size:14px;line-height:1.5}
-  #intro h1{font-size:19px;margin:0 0 8px}
-  #intro .k{display:inline-block;background:rgba(255,255,255,.15);border-radius:6px;padding:0 6px;font:600 12px ui-monospace,monospace}
-  #intro .go{margin-top:14px;text-align:center;font-weight:700;color:#8fd3ff}
-  #err{position:fixed;inset:0;z-index:20;display:none;place-items:center;padding:24px;text-align:center;background:#05060f}
-</style>
+<title>Alma Lunar</title>
+<link rel="stylesheet" href="estilos.css">
+<!-- Three.js está copiado en js/vendor, así el juego funciona sin internet -->
 <script type="importmap">
 { "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  "three": "./js/vendor/three/three.module.min.js",
+  "three/addons/geometries/RoundedBoxGeometry.js": "./js/vendor/three/addons/RoundedBoxGeometry.js"
 } }
 </script>
 </head>
@@ -71,843 +17,107 @@
 <div id="touch"></div>
 <div id="grain"></div>
 
-<div id="top">
-  <div id="hearts"></div>
-  <div id="tools">
-    <button class="tb on" id="tDbg">DEBUG</button>
-    <button class="tb" id="tGrav">g×1.0</button>
-    <button class="tb" id="tTime">⏱1x</button>
-    <button class="tb" id="tEnem" title="Reaparecer enemigos">↺👾</button>
-    <button class="tb" id="tCam">🎥</button>
-    <button class="tb" id="tSuit" title="Color del traje">🎨</button>
-    <button class="tb" id="tAcc" title="Accesorio del casco">🎩</button>
+<!-- ============ HUD (durante el juego) ============ -->
+<div id="hud" class="oculto">
+  <div id="top">
+    <div id="vida">
+      <div id="hearts"></div>
+      <div id="nombreJug"></div>
+    </div>
+    <div id="tools">
+      <button class="tb" id="tMenu" title="Menú">☰</button>
+      <button class="tb" id="tGrav" title="Multiplicador de gravedad">g×1.0</button>
+      <button class="tb lab" id="tTime" title="Cámara lenta">⏱1x</button>
+      <button class="tb lab" id="tEnem" title="Reaparecer enemigos">↺👾</button>
+      <button class="tb" id="tCam" title="Centrar cámara">🎥</button>
+      <button class="tb" id="tDbg" title="Panel de física">DEBUG</button>
+    </div>
+  </div>
+  <div id="objetivo"></div>
+  <div id="barra">
+    <div class="fila"><span id="barraV">v = 0.0 m/s</span><span id="barraRes"></span></div>
+    <div class="riel"><div id="barraLlena"></div><div id="barraMarca"><span>v<sub>esc</sub></span></div></div>
+    <div class="fila chica"><span>v<sub>esc</sub> = √(2·G·M/r) = <b id="barraVesc">0</b> m/s</span></div>
+  </div>
+  <div id="dbg"></div>
+  <div id="joyHint">mover<br>(arrastra)</div>
+  <div id="joy"><div id="knob"></div></div>
+  <button class="ab" id="bAtk">PUÑO</button>
+  <button class="ab" id="bDash">DASH</button>
+  <button class="ab" id="bJump">SALTO</button>
+  <button class="ab oculto" id="bSuper">SÚPER</button>
+</div>
+<div id="toast"></div>
+<div id="negro"></div>
+<div id="saltarCine" class="tb oculto">Saltar ›</div>
+
+<!-- ============ MENÚ INICIAL ============ -->
+<div id="menu" class="oculto">
+  <div class="titulo">
+    <h1>Alma Lunar</h1>
+    <p id="menuSub">Columba se está quedando sin mar.</p>
+  </div>
+  <div class="botones">
+    <button class="mb principal" id="mJugar">Jugar</button>
+    <button class="mb" id="mPersonaje">Personaje</button>
+    <button class="mb" id="mHistoria">Ver historia</button>
+    <button class="mb" id="mLab">Laboratorio</button>
+  </div>
+  <div class="pie" id="menuPie"></div>
+</div>
+
+<!-- panel de personalización -->
+<div id="personaje" class="oculto">
+  <div class="card">
+    <h2>Personaje</h2>
+    <label>Nombre
+      <input id="pNombre" maxlength="14" placeholder="Tu nombre" autocomplete="off">
+    </label>
+    <div class="opt"><span>Traje</span><div id="pTrajes" class="swatches"></div></div>
+    <div class="opt"><span>Casco</span><button class="mb chico" id="pAcc"></button></div>
+    <div class="opt"><span>Dificultad</span><div id="pDif" class="seg"></div></div>
+    <button class="mb principal" id="pListo">Listo</button>
   </div>
 </div>
-<div id="dbg"></div>
 
-<div id="joyHint">mover<br>(arrastra)</div>
-<div id="joy"><div id="knob"></div></div>
-<button class="ab" id="bAtk">PUÑO</button>
-<button class="ab" id="bDash">DASH</button>
-<button class="ab" id="bJump">SALTO</button>
+<!-- ============ HISTORIA ============ -->
+<div id="historia" class="oculto">
+  <div id="hCaja">
+    <div id="hQuien">? ? ?</div>
+    <div id="hTexto"></div>
+  </div>
+  <button class="tb" id="hSaltar">Saltar ›</button>
+  <div id="hToca">toca para seguir</div>
+</div>
 
-<div id="intro"><div class="card">
-  <h1>🪐 Prototipo de gravedad · mapa debug</h1>
-  Cada planeta te atrae hacia su centro. La gravedad baja con la distancia: <b>g = G·M / r²</b>.<br><br>
-  <b>Celular:</b> mitad izquierda = joystick · arrastra a la derecha = cámara · botones SALTO / PUÑO / DASH.<br>
-  <b>Teclado:</b> <span class="k">WASD</span> mover · <span class="k">Espacio</span> saltar · <span class="k">J</span> puño / pisotón · <span class="k">K</span> o <span class="k">Shift</span> dash · <span class="k">Q</span><span class="k">E</span> o mouse = cámara · <span class="k">R</span> centrar cámara.<br><br>
-  • <b>Puño</b> en el suelo. En el aire, el mismo botón hace <b>pisotón</b> (golpe al suelo con onda expansiva).<br>
-  • Salta encima de enemigos chicos y medianos. Al <b>grande</b> solo le duele el pisotón.<br>
-  • Los anillos celestes te lanzan a otro planeta.<br>
-  • 🎨 cambia el color del traje y 🎩 el accesorio del casco.
-  <div class="go">Toca para empezar</div>
-</div></div>
-<div id="err"><div>No se pudo cargar el motor 3D (Three.js).<br>Revisa tu conexión y recarga la página.</div></div>
+<!-- ============ NIVEL COMPLETO ============ -->
+<div id="completo" class="oculto">
+  <div class="card">
+    <h2 id="cTitulo">¡Nivel completo!</h2>
+    <p id="cTexto"></p>
+    <button class="mb principal" id="cSeguir">Seguir</button>
+    <button class="mb" id="cRepetir">Repetir nivel</button>
+    <button class="mb" id="cMenu">Menú</button>
+  </div>
+</div>
+
+<div id="err"><div id="errTxt">No se pudo cargar el juego.</div></div>
 
 <script>
-  // Si el módulo no arranca (CDN bloqueado), mostrar un aviso en vez de una pantalla negra.
-  setTimeout(function(){ if(!window.__gameStarted){ document.getElementById('err').style.display='grid'; } }, 8000);
-  window.addEventListener('error', function(e){ if(!window.__gameStarted){ document.getElementById('err').style.display='grid'; } });
+  // Si el juego no arranca, mostrar por qué en vez de una pantalla negra.
+  (function () {
+    var err = document.getElementById('err'), txt = document.getElementById('errTxt');
+    function mostrar(m) { if (!window.__gameStarted) { txt.innerHTML = m; err.style.display = 'grid'; } }
+    if (location.protocol === 'file:') {
+      mostrar('Este juego se abre con un servidor, no con doble clic.<br><br>' +
+        'En la carpeta del juego abre una terminal y escribe:<br><code>python -m http.server 8000</code><br>' +
+        'y luego entra a <code>http://localhost:8000</code>');
+      return;
+    }
+    setTimeout(function () { mostrar('No se pudo cargar el motor 3D.<br>Recarga la página.'); }, 10000);
+    window.addEventListener('error', function () { mostrar('Hubo un error al cargar el juego.<br>Recarga la página.'); });
+  })();
 </script>
-
-<script type="module">
-import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-window.__gameStarted = true;
-
-/* =========================================================
-   UTILIDADES
-   ========================================================= */
-const V3 = THREE.Vector3;
-const clamp = (x,a,b)=>Math.max(a,Math.min(b,x));
-const damp  = (rate,dt)=>1-Math.exp(-rate*dt);          // suavizado independiente de los FPS
-// out = v sin su componente a lo largo de n  (proyección sobre el plano tangente)
-function tangent(out,v,n){ const d=v.dot(n); return out.copy(v).addScaledVector(n,-d); }
-function dirLL(lat,lon){ const a=lat*Math.PI/180, b=lon*Math.PI/180; return new V3(Math.cos(a)*Math.sin(b), Math.sin(a), Math.cos(a)*Math.cos(b)); }
-function anyPerp(out,n){ out.set(1,0,0); if(Math.abs(n.x)>0.9) out.set(0,0,1); return tangent(out,out,n).normalize(); }
-const _mt=new V3();
-function moveTowards(v,target,maxDelta){ _mt.copy(target).sub(v); const d=_mt.length(); if(d<=maxDelta||d<1e-9) v.copy(target); else v.addScaledVector(_mt,maxDelta/d); }
-
-/* =========================================================
-   CONFIGURACIÓN DEL JUGADOR (todo se puede afinar aquí)
-   ========================================================= */
-const CFG = {
-  run:9, groundAccel:70, airAccel:22,
-  jump:14, jumpCut:0.45, coyote:0.1, buffer:0.13,
-  dashSpeed:24, dashTime:0.17, dashCD:0.5, dashKeep:0.5,
-  poundWind:0.2, poundSpeed:40, poundLand:0.22, shockR:4.5,
-  punchTime:0.28, punchFrom:0.05, punchTo:0.18, punchReach:1.15, punchR:1.0,
-  stomp:11, stompHeld:15, maxHP:5, invul:1.2, r:0.6,
-};
-
-/* =========================================================
-   MUNDO: planetas (con gravedad) y rocas (sólidas, sin gravedad)
-   Gravitación de Newton: g(r) = G·M / r².
-   Damos la gravedad en la superficie (g0) y el radio R  →  G·M = g0·R²
-   ========================================================= */
-const PLANETS = [
-  { name:'Hogar', c:new V3(0,0,0),       R:14, g:30, color:0x3f7be0 },
-  { name:'Mini',  c:new V3(38,22,-24),   R:5,  g:40, color:0xe0a03f },
-  { name:'Arena', c:new V3(-24,14,-72),  R:20, g:34, color:0x9a4fe0 },
-];
-const ROCKS = [
-  { c:dirLL(62,0).multiplyScalar(16.6),  R:1.3 },
-  { c:dirLL(53,14).multiplyScalar(20.2), R:1.4 },
-  { c:dirLL(44,28).multiplyScalar(24.4), R:1.9 },
-];
-const SOLIDS = [...PLANETS, ...ROCKS];
-const PADS = [   // anillos de lanzamiento
-  { planet:0, dir:dirLL(-15,0),  to:2 },
-  { planet:0, dir:dirLL(15,110), to:1 },
-  { planet:1, dir:dirLL(60,0),   to:0 },
-  { planet:2, dir:dirLL(70,0),   to:0 },
-];
-let gravMul = 1;
-
-/* =========================================================
-   ESCENA
-   ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: devicePixelRatio < 2 });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-document.body.prepend(renderer.domElement);
-
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x05060f);
-const camera = new THREE.PerspectiveCamera(65, innerWidth/innerHeight, 0.1, 800);
-function fitCamera(){ camera.aspect=innerWidth/innerHeight; camera.fov = camera.aspect<1 ? 78 : 62; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); }
-addEventListener('resize', fitCamera); fitCamera();
-
-scene.add(new THREE.HemisphereLight(0xcfe2ff, 0x2a2034, 1.15));
-const sun = new THREE.DirectionalLight(0xffffff, 1.7); sun.position.set(40,70,30); scene.add(sun);
-
-/* ---- ESTILO CARTOON: sombras en bloques + contorno negro + textura pintada ---- */
-// "rampa" de 3 tonos para el material toon (sombra / medio / luz)
-const gradMap = (()=>{ const t=new THREE.DataTexture(new Uint8Array([70,160,255]),3,1,THREE.RedFormat);
-  t.minFilter=t.magFilter=THREE.NearestFilter; t.needsUpdate=true; return t; })();
-// generador pseudoaleatorio con semilla: la textura sale igual cada vez
-function rng(seed){ return ()=>{ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; }; }
-// textura de manchas tipo pintura (gris claro → se multiplica por el color del material)
-function paintTex(seed,n=260,size=256){
-  const cv=document.createElement('canvas'); cv.width=cv.height=size; const g=cv.getContext('2d'), r=rng(seed);
-  g.fillStyle='#e6e6e6'; g.fillRect(0,0,size,size);
-  for(let i=0;i<n;i++){ const v=Math.floor(170+r()*85); g.fillStyle=`rgba(${v},${v},${v},${0.25+r()*0.35})`;
-    const x=r()*size,y=r()*size,rad=3+r()*16; for(const dx of [-size,0,size]) for(const dy of [-size,0,size]){ g.beginPath(); g.arc(x+dx,y+dy,rad,0,Math.PI*2); g.fill(); } }
-  const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
-}
-const paint = paintTex(7);
-function toon(color,extra={}){ return new THREE.MeshToonMaterial({ color, gradientMap:gradMap, map:paint, ...extra }); }
-// planeta pintado sin "polos": icosfera + manchas de color por vértice (sin textura que se estire)
-function planetGeo(R,color,seed){
-  const g=new THREE.IcosahedronGeometry(R,Math.min(18,Math.max(8,Math.round(R*0.9))));
-  const pos=g.attributes.position, nrm=g.attributes.normal, r=rng(seed), base=new THREE.Color(color), c=new THREE.Color(), n=new V3();
-  const blobs=Array.from({length:30},()=>{ const z=2*r()-1, a=r()*Math.PI*2, k=Math.sqrt(1-z*z);
-    return { d:new V3(k*Math.cos(a),z,k*Math.sin(a)), cos:Math.cos(0.12+r()*0.35), f:0.78+r()*0.34 }; });
-  const cols=new Float32Array(pos.count*3);
-  for(let i=0;i<pos.count;i++){
-    n.fromBufferAttribute(pos,i).normalize(); nrm.setXYZ(i,n.x,n.y,n.z);
-    let sh=1; for(const b of blobs) if(n.dot(b.d)>b.cos) sh*=b.f;
-    sh*=0.96+0.08*Math.sin(n.x*23+seed)*Math.sin(n.y*19)*Math.sin(n.z*21);
-    c.copy(base).multiplyScalar(sh); cols[i*3]=c.r; cols[i*3+1]=c.g; cols[i*3+2]=c.b;
-  }
-  g.setAttribute('color',new THREE.BufferAttribute(cols,3)); return g;
-}
-const outlineMat = new THREE.MeshBasicMaterial({ color:0x15121c, side:THREE.BackSide });
-// contorno "casco invertido": copia un poco más grande, solo caras traseras, en negro
-function outline(mesh,k=0.06){ const o=new THREE.Mesh(mesh.geometry,outlineMat); o.scale.setScalar(1+k); mesh.add(o); return mesh; }
-{ // grano sobre toda la pantalla (CSS, casi gratis)
-  const cv=document.createElement('canvas'); cv.width=cv.height=256; const g=cv.getContext('2d'), r=rng(3), img=g.createImageData(256,256);
-  for(let i=0;i<img.data.length;i+=4){ const v=r()*255; img.data[i]=img.data[i+1]=img.data[i+2]=v; img.data[i+3]=255; }
-  g.putImageData(img,0,0); document.getElementById('grain').style.backgroundImage=`url(${cv.toDataURL()})`;
-}
-
-{ // estrellas
-  const pts=[]; const d=new V3();
-  for(let i=0;i<1600;i++){ d.randomDirection().multiplyScalar(320+Math.random()*120); pts.push(d.x,d.y,d.z); }
-  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
-  scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xffffff,size:1.6,sizeAttenuation:false})));
-}
-
-function hexCss(hex,k=1){ return '#'+new THREE.Color(hex).multiplyScalar(k).getHexString(); }
-function checkerTex(c1,c2){
-  const cv=document.createElement('canvas'); cv.width=512; cv.height=256; const g=cv.getContext('2d');
-  for(let i=0;i<16;i++) for(let j=0;j<8;j++){ g.fillStyle=((i+j)&1)?c1:c2; g.fillRect(i*32,j*32,32,32); }
-  const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
-}
-const upZ = new V3(0,0,1);
-function faceNormal(obj,n){ obj.quaternion.setFromUnitVectors(upZ,n); }
-
-for(const P of PLANETS){
-  const m=new THREE.Mesh(planetGeo(P.R,P.color,11+P.R*7), toon(0xffffff,{map:null, vertexColors:true}));
-  outline(m,0.012); m.position.copy(P.c); scene.add(m);
-}
-for(const Rk of ROCKS){
-  const m=new THREE.Mesh(new THREE.IcosahedronGeometry(Rk.R,1),
-    toon(0x9a96a8,{flatShading:true}));
-  outline(m,0.05); m.position.copy(Rk.c); scene.add(m);
-}
-for(const pad of PADS){
-  const P=PLANETS[pad.planet]; pad.pos=P.c.clone().addScaledVector(pad.dir,P.R);
-  const m=new THREE.Mesh(new THREE.TorusGeometry(1.1,0.2,10,32),
-    new THREE.MeshStandardMaterial({ color:0x6fe7ff, emissive:0x2bb8ff, emissiveIntensity:1.2 }));
-  m.position.copy(pad.pos).addScaledVector(pad.dir,0.2); faceNormal(m,pad.dir); scene.add(m); pad.mesh=m;
-}
-
-/* =========================================================
-   CUERPOS FÍSICOS (jugador y enemigos usan la misma física)
-   ========================================================= */
-function makeBody(r){
-  return { pos:new V3(), vel:new V3(), r, up:new V3(0,1,0), facing:new V3(0,0,-1),
-           grounded:false, planet:PLANETS[0], gmag:0, gdir:new V3(0,-1,0) };
-}
-
-// Elige el planeta que más tira (el de mayor g en este punto) → "esfera de influencia"
-function computeGravity(b){
-  let best=PLANETS[0], bestG=-1;
-  for(const P of PLANETS){
-    const d=b.pos.distanceTo(P.c);
-    const g=P.g*gravMul*Math.pow(P.R/Math.max(d,P.R),2);   // g = g0·(R/r)²  ⇔  G·M/r²
-    if(g>bestG){ bestG=g; best=P; }
-  }
-  b.planet=best; b.gmag=bestG; b.gdir.copy(best.c).sub(b.pos).normalize();
-}
-const _up=new V3();
-function updateUp(b,dt){ _up.copy(b.gdir).negate(); b.up.lerp(_up, damp(b.grounded?25:8,dt)).normalize(); }
-
-const _cn=new V3();
-function collide(b){
-  b.grounded=false;
-  for(const s of SOLIDS){
-    _cn.copy(b.pos).sub(s.c); const d=_cn.length(), min=s.R+b.r;
-    if(d<min && d>1e-6){
-      _cn.divideScalar(d);
-      b.pos.copy(s.c).addScaledVector(_cn,min);
-      const vn=b.vel.dot(_cn); if(vn<0) b.vel.addScaledVector(_cn,-vn);
-      if(_cn.dot(b.up)>0.45) b.grounded=true;
-    }
-  }
-}
-
-/* =========================================================
-   INPUT (táctil + teclado + mouse)
-   ========================================================= */
-const input = { jx:0, jy:0, jumpHeld:false, jumpQ:0, atkQ:0, dashQ:0, camDX:0, camDY:0, recenter:false };
-const keys = new Set();
-const joyEl=document.getElementById('joy'), knob=document.getElementById('knob'), joyHint=document.getElementById('joyHint');
-let joyId=null, joyO={x:0,y:0}, camId=null, camLast={x:0,y:0};
-const touch=document.getElementById('touch');
-
-touch.addEventListener('pointerdown',e=>{
-  if(e.pointerType==='mouse' && e.button!==0) return;
-  const leftSide = e.clientX < innerWidth*0.45 && e.pointerType!=='mouse';
-  if(leftSide && joyId===null){
-    joyId=e.pointerId; joyO={x:e.clientX,y:e.clientY};
-    joyEl.style.left=e.clientX+'px'; joyEl.style.top=e.clientY+'px'; joyEl.style.display='block'; joyHint.style.display='none';
-    knob.style.transform='translate(0,0)';
-  } else if(camId===null){ camId=e.pointerId; camLast={x:e.clientX,y:e.clientY}; }
-  touch.setPointerCapture(e.pointerId);
-});
-touch.addEventListener('pointermove',e=>{
-  if(e.pointerId===joyId){
-    let dx=e.clientX-joyO.x, dy=e.clientY-joyO.y; const L=Math.hypot(dx,dy), M=52;
-    if(L>M){ dx*=M/L; dy*=M/L; }
-    knob.style.transform=`translate(${dx}px,${dy}px)`;
-    const dz=0.12; let x=dx/M, y=-dy/M; const m=Math.hypot(x,y);
-    if(m<dz){ x=0; y=0; } else { const k=(m-dz)/(1-dz)/m; x*=k; y*=k; }
-    input.jx=x; input.jy=y;
-  } else if(e.pointerId===camId){
-    input.camDX+=e.clientX-camLast.x; input.camDY+=e.clientY-camLast.y; camLast={x:e.clientX,y:e.clientY};
-  }
-});
-function endPointer(e){
-  if(e.pointerId===joyId){ joyId=null; input.jx=input.jy=0; joyEl.style.display='none'; }
-  if(e.pointerId===camId){ camId=null; }
-}
-touch.addEventListener('pointerup',endPointer); touch.addEventListener('pointercancel',endPointer);
-
-function bindBtn(id,onDown,onUp){
-  const el=document.getElementById(id);
-  el.addEventListener('pointerdown',e=>{ e.preventDefault(); el.classList.add('down'); el.setPointerCapture(e.pointerId); onDown(); });
-  const up=e=>{ el.classList.remove('down'); onUp&&onUp(); };
-  el.addEventListener('pointerup',up); el.addEventListener('pointercancel',up); el.addEventListener('lostpointercapture',up);
-  return el;
-}
-bindBtn('bJump', ()=>{ input.jumpQ=CFG.buffer; input.jumpHeld=true; }, ()=>{ input.jumpHeld=false; });
-const bAtk = bindBtn('bAtk', ()=>{ input.atkQ=CFG.buffer; });
-bindBtn('bDash', ()=>{ input.dashQ=CFG.buffer; });
-
-addEventListener('keydown',e=>{
-  if(e.repeat){ keys.add(e.code); return; }
-  keys.add(e.code);
-  if(e.code==='Space'){ input.jumpQ=CFG.buffer; input.jumpHeld=true; e.preventDefault(); }
-  if(e.code==='KeyJ'||e.code==='KeyZ'||e.code==='KeyF') input.atkQ=CFG.buffer;
-  if(e.code==='KeyK'||e.code==='KeyX'||e.code==='ShiftLeft'||e.code==='ShiftRight') input.dashQ=CFG.buffer;
-  if(e.code==='KeyR') input.recenter=true;
-  if(e.code==='KeyG'||e.code==='Backquote') toggleDebug();
-});
-addEventListener('keyup',e=>{ keys.delete(e.code); if(e.code==='Space') input.jumpHeld=false; });
-addEventListener('blur',()=>{ keys.clear(); input.jumpHeld=false; });
-document.addEventListener('contextmenu',e=>e.preventDefault());
-document.addEventListener('gesturestart',e=>e.preventDefault());
-
-/* =========================================================
-   CÁMARA (sigue al jugador y se reorienta con su "arriba")
-   ========================================================= */
-const cam = { fwd:new V3(0,0,-1), up:new V3(0,1,0), pitch:0.42, dist:8.5, pos:new V3(0,30,20), look:new V3(), shake:0 };
-const _c1=new V3(), _c2=new V3();
-function updateCamera(dt){
-  const p=player;
-  cam.up.lerp(p.up, damp(p.state==='launch'?3:6,dt)).normalize();
-  tangent(cam.fwd,cam.fwd,cam.up); if(cam.fwd.lengthSq()<1e-6) anyPerp(cam.fwd,cam.up); cam.fwd.normalize();
-  const keyYaw=(keys.has('KeyE')?1:0)-(keys.has('KeyQ')?1:0);
-  const yaw=input.camDX*0.007 + keyYaw*2.4*dt; input.camDX=0;
-  if(yaw) cam.fwd.applyAxisAngle(cam.up,-yaw);
-  cam.pitch=clamp(cam.pitch+input.camDY*0.004,0.08,1.25); input.camDY=0;
-  if(input.recenter){ cam.fwd.copy(p.facing); input.recenter=false; }
-  const target=_c1.copy(p.pos).addScaledVector(cam.up,1.0);
-  const want=_c2.copy(target).addScaledVector(cam.fwd,-Math.cos(cam.pitch)*cam.dist).addScaledVector(cam.up,Math.sin(cam.pitch)*cam.dist);
-  cam.pos.lerp(want,damp(p.state==='launch'?4:10,dt)); cam.look.lerp(target,damp(16,dt));
-  camera.position.copy(cam.pos);
-  if(cam.shake>0){ cam.shake-=dt; const s=cam.shake*0.9; camera.position.x+=(Math.random()-.5)*s; camera.position.y+=(Math.random()-.5)*s; camera.position.z+=(Math.random()-.5)*s; }
-  camera.up.copy(cam.up); camera.lookAt(cam.look);
-}
-
-/* =========================================================
-   JUGADOR
-   ========================================================= */
-const player = Object.assign(makeBody(CFG.r), {
-  hp:CFG.maxHP, state:'normal', t:0, coyote:0, airDash:true, dashCD:0, invul:0, hurtT:0,
-  jumping:false, jumpCut:false, dashDir:new V3(), punchHit:new Set(), dashHit:new Set(),
-  launch:null, launchCD:0, voidT:0, land:0,
-});
-const pl = {}; // malla del jugador: chibi con casco de vidrio y un planetita con ojos adentro
-const SUITS = [0x2f3d8f, 0xd9573b, 0x3f9b6a, 0xe8e2d4, 0x7d4bc9];      // azul noche, naranja, verde, blanco, morado
-const ACCS  = ['sombrero','lazo','ninguno'];
-let suitIdx=0, accIdx=0;
-function headTex(){ // planetita: océano + continentes
-  const cv=document.createElement('canvas'); cv.width=256; cv.height=128; const g=cv.getContext('2d'), r=rng(21);
-  g.fillStyle='#3fb6c9'; g.fillRect(0,0,256,128);
-  for(let i=0;i<18;i++){ g.fillStyle=i%3?'#7cc96a':'#5aa857'; const x=r()*256,y=20+r()*88,rad=8+r()*18;
-    for(const dx of [-256,0,256]){ g.beginPath(); g.ellipse(x+dx,y,rad*1.4,rad,0,0,Math.PI*2); g.fill(); } }
-  const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; t.wrapS=THREE.RepeatWrapping; return t;
-}
-{
-  pl.group=new THREE.Group(); scene.add(pl.group);
-  pl.body=new THREE.Group(); pl.group.add(pl.body);
-  const suit=toon(SUITS[0],{emissive:0x000000}); pl.mat=suit;
-  const grey=toon(0xb9b4c4), dark=toon(0x3a3446);
-  const add=(geo,mat,x,y,z,k=0.07)=>{ const m=outline(new THREE.Mesh(geo,mat),k); m.position.set(x,y,z); pl.body.add(m); return m; };
-  // cuerpo: más largo de lado (profundidad) que de frente → "rectangular de lado"
-  add(new RoundedBoxGeometry(0.62,0.5,0.74,4,0.17),suit,0,-0.2,0,0.05);
-  add(new THREE.CapsuleGeometry(0.11,0.08,4,10),dark,-0.15,-0.48,0.04);
-  add(new THREE.CapsuleGeometry(0.11,0.08,4,10),dark, 0.15,-0.48,0.04);
-  const armL=add(new THREE.CapsuleGeometry(0.09,0.2,4,10),suit,-0.38,-0.2,0.05); armL.rotation.z=-0.6;
-  const armR=add(new THREE.CapsuleGeometry(0.09,0.2,4,10),suit, 0.38,-0.2,0.05); armR.rotation.z= 0.6;
-  pl.arms=[armL,armR];
-  add(new RoundedBoxGeometry(0.42,0.38,0.2,3,0.07),grey,0,-0.14,-0.44,0.06);          // mochila
-  const collar=add(new THREE.TorusGeometry(0.31,0.06,8,28),grey,0,0.06,0,0.12); collar.rotation.x=Math.PI/2;
-  // cabeza = casco de vidrio con un planetita adentro
-  pl.head=new THREE.Group(); pl.head.position.y=0.44; pl.body.add(pl.head);
-  pl.planet=outline(new THREE.Mesh(new THREE.SphereGeometry(0.27,32,16), toon(0xffffff,{map:headTex()})),0.05);
-  pl.head.add(pl.planet);
-  pl.eyes=new THREE.Group(); pl.head.add(pl.eyes);
-  const white=new THREE.MeshBasicMaterial({color:0xffffff}), black=new THREE.MeshBasicMaterial({color:0x111111});
-  for(const sx of [-1,1]){
-    const eye=outline(new THREE.Mesh(new THREE.SphereGeometry(1,14,10),white),0.18); eye.scale.set(0.065,0.085,0.035); eye.position.set(sx*0.085,0.03,0.25); pl.eyes.add(eye);
-    const pup=new THREE.Mesh(new THREE.SphereGeometry(1,10,8),black); pup.scale.set(0.035,0.05,0.02); pup.position.set(sx*0.085,0.02,0.28); pl.eyes.add(pup);
-  }
-  // lunita que orbita adentro del casco (aparecerá al recuperar fragmentos del alma lunar)
-  pl.moon=outline(new THREE.Mesh(new THREE.SphereGeometry(0.045,12,8),toon(0xf3efe0)),0.12); pl.head.add(pl.moon);
-  // vidrio: casi transparente + brillo cartoon + contorno que siempre mira a la cámara
-  pl.glass=new THREE.Mesh(new THREE.SphereGeometry(0.43,32,20),new THREE.MeshBasicMaterial({color:0xcfefff,transparent:true,opacity:0.14,depthWrite:false}));
-  pl.head.add(pl.glass);
-  const shine=new THREE.Mesh(new THREE.TorusGeometry(0.33,0.022,6,20,1.1),new THREE.MeshBasicMaterial({color:0xffffff}));
-  shine.position.z=0.27; shine.rotation.z=Math.PI*0.55; pl.head.add(shine);
-  pl.ring=new THREE.Mesh(new THREE.RingGeometry(0.43,0.465,48),new THREE.MeshBasicMaterial({color:0x15121c,side:THREE.DoubleSide}));
-  pl.head.add(pl.ring);
-  // accesorios del casco (personalización)
-  pl.acc={};
-  const hat=new THREE.Group(); hat.position.set(0.04,0.4,0); hat.rotation.z=-0.15; pl.head.add(hat);
-  const hatMat=toon(0x1c1a22), band=toon(0xc93c3c);
-  hat.add(outline(new THREE.Mesh(new THREE.CylinderGeometry(0.27,0.27,0.035,24),hatMat),0.06));
-  const crown=outline(new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.18,0.3,24),hatMat),0.06); crown.position.y=0.16; hat.add(crown);
-  const bnd=new THREE.Mesh(new THREE.CylinderGeometry(0.185,0.185,0.06,24),band); bnd.position.y=0.05; hat.add(bnd);
-  pl.acc.sombrero=hat;
-  const bow=new THREE.Group(); bow.position.set(0.22,0.33,0.05); bow.rotation.z=-0.6; pl.head.add(bow);
-  const pink=toon(0xff6fae);
-  for(const sx of [-1,1]){ const w=outline(new THREE.Mesh(new THREE.SphereGeometry(1,12,8),pink),0.12); w.scale.set(0.12,0.075,0.05); w.position.x=sx*0.1; w.rotation.z=sx*0.35; bow.add(w); }
-  bow.add(outline(new THREE.Mesh(new THREE.SphereGeometry(0.045,10,8),pink),0.15));
-  pl.acc.lazo=bow;
-  pl.fist=outline(new THREE.Mesh(new THREE.SphereGeometry(0.15,12,10),toon(0xffd36b,{emissive:0x553300})),0.1);
-  pl.fist.visible=false; pl.body.add(pl.fist);
-  pl.shadow=new THREE.Mesh(new THREE.CircleGeometry(0.62,24),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.45,depthWrite:false}));
-  scene.add(pl.shadow);
-}
-function applyLook(){
-  pl.mat.color.setHex(SUITS[suitIdx]);
-  for(const k in pl.acc) pl.acc[k].visible = ACCS[accIdx]===k;
-  try{ localStorage.setItem('almaLunarLook',JSON.stringify({suitIdx,accIdx})); }catch(e){}
-}
-try{ const L=JSON.parse(localStorage.getItem('almaLunarLook')||'null'); if(L){ suitIdx=L.suitIdx%SUITS.length; accIdx=L.accIdx%ACCS.length; } }catch(e){}
-applyLook();
-
-const _mv=new V3(), _hv=new V3(), _t=new V3(), _t2=new V3(), _camR=new V3();
-function moveInput(out){
-  let ix=input.jx, iy=input.jy;
-  if(keys.has('KeyA')||keys.has('ArrowLeft')) ix-=1;
-  if(keys.has('KeyD')||keys.has('ArrowRight')) ix+=1;
-  if(keys.has('KeyW')||keys.has('ArrowUp')) iy+=1;
-  if(keys.has('KeyS')||keys.has('ArrowDown')) iy-=1;
-  const m=Math.hypot(ix,iy); if(m>1){ ix/=m; iy/=m; }
-  tangent(out,cam.fwd,player.up); if(out.lengthSq()<1e-6) anyPerp(out,player.up); out.normalize();
-  _camR.crossVectors(out,player.up);                       // derecha de la cámara
-  return out.multiplyScalar(iy).addScaledVector(_camR,ix);
-}
-
-function respawnPlayer(){
-  const p=player, P=PLANETS[0];
-  p.pos.copy(P.c).addScaledVector(new V3(0,1,0),P.R+p.r+0.5);
-  p.vel.set(0,0,0); p.up.set(0,1,0); p.facing.set(0,0,-1); p.hp=CFG.maxHP; p.state='normal'; p.invul=2;
-  p.voidT=0; p.launch=null; cam.fwd.set(0,0,-1); renderHearts();
-}
-
-function stepPlayer(dt){
-  const p=player;
-  p.dashCD-=dt; p.invul-=dt; p.launchCD-=dt; p.hurtT-=dt;
-  input.jumpQ-=dt; input.atkQ-=dt; input.dashQ-=dt;
-  computeGravity(p);
-  if(p.state==='launch'){ stepLaunch(dt); return; }
-  updateUp(p,dt);
-
-  const mv=moveInput(_mv), mvLen=mv.length();
-  let vy=p.vel.dot(p.up); tangent(_hv,p.vel,p.up);
-
-  // ATAQUE: en el suelo = puño; en el aire = pisotón
-  if(input.atkQ>0 && (p.state==='normal'||p.state==='dash')){
-    input.atkQ=0;
-    if(p.grounded){ p.state='punch'; p.t=0; p.punchHit.clear(); }
-    else { p.state='poundWind'; p.t=0; }
-  }
-  // DASH (uno en el aire hasta tocar suelo)
-  if(input.dashQ>0 && p.dashCD<=0 && p.state==='normal' && (p.grounded||p.airDash)){
-    input.dashQ=0; p.state='dash'; p.t=0; p.dashCD=CFG.dashCD; if(!p.grounded) p.airDash=false;
-    p.dashDir.copy(mvLen>0.2?mv:p.facing); tangent(p.dashDir,p.dashDir,p.up).normalize();
-    p.facing.copy(p.dashDir); p.dashHit.clear(); p.dashGround=p.grounded;
-  }
-  // SALTO (con "coyote time" y buffer de entrada)
-  if(input.jumpQ>0 && (p.grounded||p.coyote>0) && (p.state==='normal'||p.state==='dash'||p.state==='punch')){
-    input.jumpQ=0; p.coyote=0; vy=CFG.jump; p.jumping=true; p.jumpCut=false; p.grounded=false;
-    if(p.state==='dash') _hv.copy(p.dashDir).multiplyScalar(CFG.dashSpeed*0.75);   // dash + salto = salto largo
-    p.state='normal'; p.land=-0.25;
-  }
-  // salto variable: si sueltas el botón antes, sube menos
-  if(p.jumping && !input.jumpHeld && vy>0 && !p.jumpCut){ vy*=CFG.jumpCut; p.jumpCut=true; }
-
-  switch(p.state){
-    case 'normal': case 'punch': {
-      const ctrl = p.hurtT>0 ? 0.15 : (p.state==='punch'?0.3:1);
-      _t.copy(mv).multiplyScalar(CFG.run*ctrl);
-      moveTowards(_hv,_t,(p.grounded?CFG.groundAccel:CFG.airAccel)*dt);
-      vy -= p.gmag*dt;                                       // la gravedad acelera hacia el centro
-      if(p.state==='punch'){ p.t+=dt; punchHits(); if(p.t>=CFG.punchTime) p.state='normal'; }
-      break;
-    }
-    case 'dash':
-      p.t+=dt; tangent(p.dashDir,p.dashDir,p.up).normalize();   // sigue la curvatura del planeta
-      _hv.copy(p.dashDir).multiplyScalar(CFG.dashSpeed); vy = p.dashGround ? -6 : 0;  // en el suelo se pega a la superficie
-      if(p.t>=CFG.dashTime){ p.state='normal'; _hv.multiplyScalar(CFG.dashKeep); }
-      break;
-    case 'poundWind':
-      p.t+=dt; _hv.set(0,0,0); vy=0; if(p.t>=CFG.poundWind) p.state='pound';
-      break;
-    case 'pound':
-      _hv.set(0,0,0); vy=-CFG.poundSpeed;
-      break;
-    case 'poundLand':
-      p.t+=dt; _hv.multiplyScalar(Math.max(0,1-12*dt)); vy-=p.gmag*dt; if(p.t>=CFG.poundLand) p.state='normal';
-      break;
-  }
-  if(vy<-45) vy=-45;
-  p.vel.copy(_hv).addScaledVector(p.up,vy);
-  p.pos.addScaledVector(p.vel,dt);
-
-  const was=p.grounded; collide(p);
-  if(p.grounded){
-    p.coyote=CFG.coyote; p.airDash=true; p.jumping=false;
-    if(!was) p.land=Math.min(0.35, 0.1+Math.abs(vy)*0.01);
-    if(p.state==='pound'){ p.state='poundLand'; p.t=0; shockwave(_t2.copy(p.pos).addScaledVector(p.up,-p.r), p.up, null); cam.shake=0.35; }
-  } else p.coyote-=dt;
-
-  if(mvLen>0.1 && p.state==='normal'){ _t.copy(mv).normalize(); p.facing.lerp(_t,damp(14,dt)); }
-  tangent(p.facing,p.facing,p.up); if(p.facing.lengthSq()<1e-6) anyPerp(p.facing,p.up); p.facing.normalize();
-
-  if(p.launchCD<=0 && p.state==='normal')
-    for(const pad of PADS) if(p.pos.distanceTo(pad.pos)<1.5){ startLaunch(pad); break; }
-
-  // lejos de todo planeta (gravedad casi cero) o sin vida → reaparecer
-  p.voidT = p.gmag<0.8 ? p.voidT+dt : 0;
-  if(p.voidT>2.5 || p.hp<=0) respawnPlayer();
-}
-
-function punchHits(){
-  const p=player; if(p.t<CFG.punchFrom||p.t>CFG.punchTo) return;
-  const hc=_t2.copy(p.pos).addScaledVector(p.facing,CFG.punchReach);
-  for(const e of enemies){
-    if(e.dead||p.punchHit.has(e)) continue;
-    if(hc.distanceTo(e.pos)<CFG.punchR+e.r){
-      p.punchHit.add(e);
-      if(e.T.punch>0){ hurtEnemy(e,e.T.punch,_t.copy(p.facing).multiplyScalar(9).addScaledVector(e.up,5),0.5); }
-      else { e.flash=0.08; _hv.addScaledVector(p.facing,-10); cam.shake=0.12; }   // el grande no siente el puño: rebotas
-    }
-  }
-}
-
-/* --- anillos de lanzamiento: curva de Bézier hacia otro planeta --- */
-function startLaunch(pad){
-  const p=player, P=PLANETS[pad.to];
-  const p0=p.pos.clone(), n=p0.clone().sub(P.c).normalize(), p1=P.c.clone().addScaledVector(n,P.R+3);
-  const dist=p0.distanceTo(p1);
-  const ctrl=p0.clone().add(p1).multiplyScalar(0.5).addScaledVector(p.up.clone().add(n).normalize(),dist*0.35);
-  p.launch={p0,p1,ctrl,t:0,dur:1+dist/70,n}; p.state='launch'; p.vel.set(0,0,0);
-}
-const _b=new V3();
-function stepLaunch(dt){
-  const p=player, L=p.launch; L.t+=dt;
-  const s=clamp(L.t/L.dur,0,1), e=s<.5?2*s*s:1-Math.pow(-2*s+2,2)/2, u=1-e;
-  const prev=_b.copy(p.pos);
-  p.pos.set(0,0,0).addScaledVector(L.p0,u*u).addScaledVector(L.ctrl,2*u*e).addScaledVector(L.p1,e*e);
-  updateUp(p,dt*0.6);
-  _t.copy(p.pos).sub(prev); tangent(_t,_t,p.up); if(_t.lengthSq()>1e-8) p.facing.copy(_t).normalize();
-  if(s>=1){ p.state='normal'; p.vel.copy(L.n).multiplyScalar(-6); p.launchCD=1; p.airDash=true; p.launch=null; }
-}
-
-function hurtPlayer(dmg,awayN){
-  const p=player; if(p.invul>0) return;
-  p.hp-=dmg; p.invul=CFG.invul; p.hurtT=0.35; p.state='normal';
-  tangent(_t,awayN,p.up); if(_t.lengthSq()<1e-6) _t.copy(p.facing).negate(); _t.normalize();
-  p.vel.copy(_t).multiplyScalar(9).addScaledVector(p.up,7); cam.shake=0.2;
-  renderHearts(true);
-}
-
-/* =========================================================
-   ENEMIGOS: chico / mediano / grande
-   ========================================================= */
-const ETYPES = {
-  // stomp/punch/dash = daño que reciben (0 = inmune)
-  small:  { r:0.45, hp:1, speed:4.6, color:0xff4d6d, aggro:12, stomp:1, punch:1, dash:1, mass:1 },
-  medium: { r:0.9,  hp:3, speed:3.4, color:0xffa53d, aggro:14, stomp:1, punch:1, dash:1, mass:2.5 },
-  large:  { r:1.8,  hp:6, speed:2.4, color:0x8b5cff, aggro:16, stomp:0, punch:0, dash:0, mass:8, charger:true },
-};
-const SPAWNS = [
-  ['small',0,dirLL(35,40)], ['small',0,dirLL(30,-60)], ['small',0,dirLL(30,90)], ['small',0,dirLL(20,-120)],
-  ['medium',0,dirLL(40,180)], ['medium',0,dirLL(0,60)],
-  ['small',1,dirLL(10,60)], ['small',1,dirLL(-30,200)],
-  ['large',2,dirLL(40,30)], ['medium',2,dirLL(30,-50)], ['small',2,dirLL(70,120)], ['small',2,dirLL(10,150)],
-];
-let enemies=[];
-const eyeGeo=new THREE.SphereGeometry(1,10,8), eyeMat=new THREE.MeshBasicMaterial({color:0xffffff}), pupMat=new THREE.MeshBasicMaterial({color:0x111111});
-const pipGeo=new THREE.BoxGeometry(0.16,0.16,0.16), pipOn=new THREE.MeshBasicMaterial({color:0x7dff8a}), pipOff=new THREE.MeshBasicMaterial({color:0x333333});
-
-function makeEnemy(kind,planetIdx,dir){
-  const T=ETYPES[kind], P=PLANETS[planetIdx];
-  const e=Object.assign(makeBody(T.r),{ kind, T, hp:T.hp, dead:false, dieT:0, stun:0, flash:0, cd:1, state:'walk', t:0,
-    chargeDir:new V3(), wanderDir:new V3(), wanderT:0 });
-  e.pos.copy(P.c).addScaledVector(dir,P.R+T.r+0.05); e.up.copy(dir); anyPerp(e.facing,dir); e.wanderDir.copy(e.facing);
-  const g=new THREE.Group(); scene.add(g);
-  const mat=toon(T.color,{flatShading:true, emissive:0x000000});
-  const body=outline(new THREE.Mesh(new THREE.IcosahedronGeometry(T.r,1),mat),0.07); g.add(body);
-  for(const sx of [-1,1]){
-    const eye=new THREE.Mesh(eyeGeo,eyeMat); eye.scale.setScalar(T.r*0.22); eye.position.set(sx*T.r*0.35,T.r*0.25,T.r*0.82); g.add(eye);
-    const pup=new THREE.Mesh(eyeGeo,pupMat); pup.scale.setScalar(T.r*0.11); pup.position.set(sx*T.r*0.35,T.r*0.25,T.r*1.0); g.add(pup);
-  }
-  if(kind==='large') for(let i=0;i<5;i++){ // cresta de púas: "no me pises"
-    const sp=new THREE.Mesh(new THREE.ConeGeometry(0.28,0.8,6),toon(0xeeeeee,{flatShading:true}));
-    const a=(i-2)*0.32; sp.position.set(0,Math.cos(a)*T.r*0.95,Math.sin(a)*T.r*0.95); sp.rotation.x=a; g.add(sp);
-  }
-  const pips=new THREE.Group(); pips.position.y=T.r+0.45; g.add(pips);
-  for(let i=0;i<T.hp;i++){ const pp=new THREE.Mesh(pipGeo,pipOn); pp.position.x=(i-(T.hp-1)/2)*0.22; pips.add(pp); }
-  e.mesh={g,body,mat,pips};
-  return e;
-}
-function spawnEnemies(){
-  for(const e of enemies) scene.remove(e.mesh.g);
-  enemies=SPAWNS.map(([k,pi,d])=>makeEnemy(k,pi,d));
-}
-
-function hurtEnemy(e,dmg,knock,stun){
-  if(e.dead) return;
-  e.hp-=dmg; e.flash=0.15; e.stun=Math.max(e.stun,stun); e.state='walk';
-  e.vel.copy(knock).divideScalar(Math.sqrt(e.T.mass));
-  e.mesh.pips.children.forEach((pp,i)=>pp.material= i<e.hp?pipOn:pipOff);
-  if(e.hp<=0){ e.dead=true; e.dieT=0.3; }
-}
-
-const _w=new V3(), _eh=new V3(), _toP=new V3();
-function stepEnemies(dt){
-  const p=player;
-  for(const e of enemies){
-    if(e.dead){ e.dieT-=dt; continue; }
-    computeGravity(e); updateUp(e,dt);
-    e.stun-=dt; e.flash-=dt; e.cd-=dt;
-    let spd=e.T.speed; _w.set(0,0,0); let chasing=false;
-    if(e.stun>0){ /* aturdido: no se mueve por sí mismo */ }
-    else if(e.state==='wind'){ e.t-=dt; if(e.t<=0){ e.state='charge'; e.t=0.75; } }
-    else if(e.state==='charge'){ e.t-=dt; tangent(_w,e.chargeDir,e.up).normalize(); spd=14; if(e.t<=0){ e.state='walk'; e.cd=2.2; } }
-    else {
-      _toP.copy(p.pos).sub(e.pos); const dist=_toP.length();
-      chasing = p.planet===e.planet && dist<e.T.aggro && p.state!=='launch';
-      if(chasing){
-        tangent(_w,_toP,e.up).normalize();
-        if(e.T.charger && e.cd<=0 && dist<11){ e.state='wind'; e.t=0.7; e.chargeDir.copy(_w); _w.set(0,0,0); }
-      } else {
-        e.wanderT-=dt;
-        if(e.wanderT<=0){ e.wanderDir.applyAxisAngle(e.up,(Math.random()-.5)*2.5); e.wanderT=1.5+Math.random()*2; }
-        tangent(_w,e.wanderDir,e.up).normalize(); e.wanderDir.copy(_w); spd*=0.45;
-      }
-    }
-    let vy=e.vel.dot(e.up); tangent(_eh,e.vel,e.up);
-    _t.copy(_w).multiplyScalar(spd);
-    _eh.lerp(_t, damp(e.grounded ? (e.stun>0?3:8) : 1.2, dt));
-    if(chasing && e.kind==='small' && e.grounded && Math.random()<dt*0.7) vy=7;   // los chicos dan saltitos
-    vy-=e.gmag*dt;
-    e.vel.copy(_eh).addScaledVector(e.up,vy);
-    e.pos.addScaledVector(e.vel,dt);
-    collide(e);
-    if(_w.lengthSq()>0.01) e.facing.lerp(_w,damp(8,dt));
-    tangent(e.facing,e.facing,e.up); if(e.facing.lengthSq()<1e-6) anyPerp(e.facing,e.up); e.facing.normalize();
-    if(e.pos.length()>400) { e.dead=true; e.dieT=0; }
-  }
-  // separación simple entre enemigos
-  for(let i=0;i<enemies.length;i++) for(let j=i+1;j<enemies.length;j++){
-    const a=enemies[i], b=enemies[j]; if(a.dead||b.dead) continue;
-    _t.copy(a.pos).sub(b.pos); const d=_t.length(), min=a.r+b.r;
-    if(d<min && d>1e-6){ _t.multiplyScalar((min-d)/d); const wa=b.T.mass/(a.T.mass+b.T.mass);
-      a.pos.addScaledVector(_t,wa); b.pos.addScaledVector(_t,-(1-wa)); }
-  }
-}
-
-/* contacto jugador ↔ enemigo: pisar, pisotón, dash o recibir daño */
-const _n=new V3();
-function stepContacts(){
-  const p=player; if(p.state==='launch') return;
-  for(const e of enemies){
-    if(e.dead) continue;
-    _n.copy(p.pos).sub(e.pos); const d=_n.length(), min=p.r+e.r;
-    if(d>=min) continue;
-    _n.divideScalar(d||1);
-    const above=_n.dot(e.up), vrel=_t.copy(p.vel).sub(e.vel).dot(e.up);
-
-    if(p.state==='pound'){                                       // pisotón directo: 3 de daño
-      hurtEnemy(e,3,_t.copy(e.up).multiplyScalar(-3),1.5);
-      shockwave(_t2.copy(e.pos).addScaledVector(_n,e.r), p.up, e);
-      p.state='normal'; tangent(p.vel,p.vel,p.up); p.vel.addScaledVector(p.up,12); p.jumping=true; p.jumpCut=true;
-      p.pos.copy(e.pos).addScaledVector(_n,min); cam.shake=0.35; continue;
-    }
-    if(above>0.5 && vrel<0.5){                                   // caer encima → rebote
-      if(e.T.stomp>0) hurtEnemy(e,e.T.stomp,_t.copy(e.up).multiplyScalar(-2),0.8); else e.flash=0.08;
-      if(p.state==='dash'||p.state==='poundWind') p.state='normal';
-      tangent(p.vel,p.vel,p.up); p.vel.addScaledVector(p.up,input.jumpHeld?CFG.stompHeld:CFG.stomp);
-      p.jumping=true; p.jumpCut=false; p.airDash=true; p.grounded=false;
-      p.pos.copy(e.pos).addScaledVector(_n,min); continue;
-    }
-    if(p.state==='dash'){
-      if(e.T.dash>0){ if(!p.dashHit.has(e)){ p.dashHit.add(e); hurtEnemy(e,e.T.dash,_t.copy(p.dashDir).multiplyScalar(11).addScaledVector(e.up,5),0.6); } }
-      else { p.state='normal'; p.vel.copy(_n).multiplyScalar(10).addScaledVector(p.up,6); e.flash=0.08; cam.shake=0.15; }
-      p.pos.copy(e.pos).addScaledVector(_n,min); continue;
-    }
-    p.pos.copy(e.pos).addScaledVector(_n,min);
-    if(e.stun>0) continue;                                        // aturdido = inofensivo
-    hurtPlayer(e.state==='charge'?2:1,_n);
-  }
-}
-
-/* =========================================================
-   EFECTOS: onda expansiva del pisotón
-   ========================================================= */
-const fx=[];
-const ringGeo=new THREE.RingGeometry(0.85,1,48);
-function shockwave(point,up,direct){
-  const m=new THREE.Mesh(ringGeo,new THREE.MeshBasicMaterial({color:0xfff2a8,transparent:true,opacity:.9,side:THREE.DoubleSide,depthWrite:false}));
-  m.position.copy(point).addScaledVector(up,0.1); faceNormal(m,up); scene.add(m); fx.push({m,t:0,dur:0.35});
-  for(const e of enemies){
-    if(e.dead||e===direct) continue;
-    if(e.pos.distanceTo(point)<CFG.shockR+e.r){
-      tangent(_t,_t2.copy(e.pos).sub(point),e.up); if(_t.lengthSq()>1e-6) _t.normalize();
-      hurtEnemy(e,1,_t.multiplyScalar(6).addScaledVector(e.up,8),1.4);
-    }
-  }
-  if(debugOn){ shockDbg.position.copy(point); shockDbg.scale.setScalar(CFG.shockR); shockDbg.visible=true; shockDbgT=0.4; }
-}
-function stepFx(dt){
-  for(let i=fx.length-1;i>=0;i--){
-    const f=fx[i]; f.t+=dt; const k=f.t/f.dur; f.m.scale.setScalar(0.5+k*CFG.shockR); f.m.material.opacity=0.9*(1-k);
-    if(k>=1){ scene.remove(f.m); f.m.material.dispose(); fx.splice(i,1); }
-  }
-}
-
-/* =========================================================
-   VISUALES (orientar mallas según el "arriba" de cada cuerpo)
-   ========================================================= */
-const _xA=new V3(), _zA=new V3(), _mB=new THREE.Matrix4();
-function orient(obj,up,facing){
-  tangent(_zA,facing,up); if(_zA.lengthSq()<1e-6) anyPerp(_zA,up); _zA.normalize();
-  _xA.crossVectors(up,_zA); _mB.makeBasis(_xA,up,_zA); obj.quaternion.setFromRotationMatrix(_mB);
-}
-// raycast de la sombra hacia el centro del planeta
-function rayHit(origin,dir){
-  let best=Infinity, hitS=null;
-  for(const s of SOLIDS){
-    _t.copy(origin).sub(s.c); const b=_t.dot(dir), c=_t.lengthSq()-s.R*s.R;
-    if(c>0&&b>0) continue; const disc=b*b-c; if(disc<0) continue;
-    const tt=Math.max(0,-b-Math.sqrt(disc)); if(tt<best){ best=tt; hitS=s; }
-  }
-  return hitS?{t:best,s:hitS}:null;
-}
-const _sp=new V3(), _sn=new V3(), _q=new THREE.Quaternion();
-let elapsed=0;
-function updateVisuals(dt){
-  elapsed+=dt;
-  const p=player;
-  pl.group.position.copy(p.pos); orient(pl.group,p.up,p.facing);
-  p.land+= (0-p.land)*damp(12,dt);
-  let sx=1+p.land*0.6, sy=1-p.land, sz=1+p.land*0.6;
-  pl.body.rotation.set(0,0,0);
-  if(p.state==='dash'){ sx=0.8; sy=0.85; sz=1.35; }
-  if(p.state==='poundWind'){ pl.body.rotation.x=(p.t/CFG.poundWind)*Math.PI*2; }
-  if(p.state==='pound'){ sx=0.85; sy=1.25; sz=0.85; }
-  pl.body.scale.set(sx,sy,sz);
-  pl.fist.visible=p.state==='punch';
-  if(pl.fist.visible){ const k=Math.sin(Math.PI*clamp(p.t/CFG.punchTime,0,1)); pl.fist.position.set(0.3,-0.12,0.35+k*0.75); }
-  // planetita que gira, ojos que parpadean (o se aprietan al recibir daño), lunita en órbita
-  pl.planet.rotation.y+=dt*0.6;
-  const blink=(elapsed%3.2)<0.12, hurt=p.hurtT>0;
-  pl.eyes.scale.y = hurt?0.25:(blink?0.1:1);
-  const ma=elapsed*1.8; pl.moon.position.set(Math.cos(ma)*0.35,Math.sin(ma)*0.12,Math.sin(ma)*0.35);
-  // bracitos que se balancean al caminar
-  const sp=Math.min(1,tangent(_sp,p.vel,p.up).length()/CFG.run), sw=Math.sin(elapsed*14)*0.5*sp*(p.grounded?1:0);
-  pl.arms[0].rotation.x=sw; pl.arms[1].rotation.x=-sw;
-  // el contorno del vidrio siempre mira a la cámara
-  pl.head.getWorldQuaternion(_q); _q.invert().multiply(camera.quaternion); pl.ring.quaternion.copy(_q);
-  pl.group.visible = !(p.invul>0 && Math.floor(elapsed*16)%2===0);
-  pl.mat.emissive.setHex(p.state==='pound'||p.state==='poundWind'?0x664400:0x000000);
-  // sombra
-  const h=rayHit(p.pos,p.gdir);
-  if(h && p.state!=='launch'){
-    _sp.copy(p.pos).addScaledVector(p.gdir,h.t); _sn.copy(_sp).sub(h.s.c).normalize();
-    pl.shadow.position.copy(_sp).addScaledVector(_sn,0.03); faceNormal(pl.shadow,_sn);
-    const k=clamp(1-h.t/12,0.25,1); pl.shadow.scale.setScalar(k); pl.shadow.material.opacity=0.45*k; pl.shadow.visible=true;
-  } else pl.shadow.visible=false;
-
-  for(const e of enemies){
-    const M=e.mesh;
-    if(e.dead){ const k=clamp(e.dieT/0.3,0,1); M.g.scale.setScalar(k); if(k<=0) M.g.visible=false; M.g.position.copy(e.pos); continue; }
-    M.g.visible=true; M.g.position.copy(e.pos); orient(M.g,e.up,e.facing);
-    let s=1; if(e.state==='wind') s=1+Math.sin(elapsed*40)*0.06+0.1;
-    M.g.scale.setScalar(s);
-    M.body.rotation.z = e.stun>0 ? Math.sin(elapsed*25)*0.35 : 0;
-    const em = e.flash>0 ? 0xffffff : e.state==='wind' ? 0x990000 : e.state==='charge' ? 0x550000 : e.stun>0 ? 0x333344 : 0x000000;
-    M.mat.emissive.setHex(em);
-    M.pips.visible=debugOn || e.hp<e.T.hp;
-  }
-  for(const pad of PADS){ pad.mesh.rotation.z+=dt*2; pad.mesh.material.emissiveIntensity=1+Math.sin(elapsed*5)*0.4; }
-  stepFx(dt);
-  updateDebugHelpers(dt);
-}
-
-/* =========================================================
-   DEBUG
-   ========================================================= */
-let debugOn=true;
-const gArrow=new THREE.ArrowHelper(new V3(0,-1,0),new V3(),2,0xff5555,0.4,0.25);
-const vArrow=new THREE.ArrowHelper(new V3(1,0,0),new V3(),2,0x55ff88,0.4,0.25);
-const punchDbg=new THREE.Mesh(new THREE.SphereGeometry(CFG.punchR,12,8),new THREE.MeshBasicMaterial({color:0xffd36b,wireframe:true}));
-const shockDbg=new THREE.Mesh(new THREE.SphereGeometry(1,16,10),new THREE.MeshBasicMaterial({color:0xfff2a8,wireframe:true,transparent:true,opacity:.5}));
-let shockDbgT=0;
-scene.add(gArrow,vArrow,punchDbg,shockDbg);
-function updateDebugHelpers(dt){
-  const p=player;
-  gArrow.visible=vArrow.visible=debugOn;
-  if(debugOn){
-    gArrow.position.copy(p.pos); gArrow.setDirection(p.gdir); gArrow.setLength(Math.max(0.5,p.gmag/10),0.4,0.25);
-    const sp=p.vel.length(); vArrow.position.copy(p.pos); if(sp>0.1){ vArrow.setDirection(_t.copy(p.vel).divideScalar(sp)); vArrow.setLength(Math.max(0.5,sp/5),0.4,0.25); vArrow.visible=true; } else vArrow.visible=false;
-  }
-  punchDbg.visible=debugOn && p.state==='punch' && p.t>=CFG.punchFrom && p.t<=CFG.punchTo;
-  if(punchDbg.visible) punchDbg.position.copy(p.pos).addScaledVector(p.facing,CFG.punchReach);
-  shockDbgT-=dt; shockDbg.visible=debugOn && shockDbgT>0;
-}
-const dbgEl=document.getElementById('dbg'); let dbgT=0, fpsAcc=0, fpsN=0, fps=60;
-function hudDebug(dt){
-  fpsAcc+=dt; fpsN++; dbgT-=dt;
-  if(dbgT>0) return; dbgT=0.12; fps=Math.round(fpsN/fpsAcc); fpsAcc=0; fpsN=0;
-  if(!debugOn){ dbgEl.style.display='none'; return; } dbgEl.style.display='block';
-  const p=player, r=p.pos.distanceTo(p.planet.c), vy=p.vel.dot(p.up), vh=Math.sqrt(Math.max(0,p.vel.lengthSq()-vy*vy));
-  const vesc=Math.sqrt(2*p.gmag*r);
-  const alive=enemies.filter(e=>!e.dead).length;
-  dbgEl.innerHTML=
-`<b>FPS</b> ${fps}   <b>estado</b> ${p.state}   <b>suelo</b> ${p.grounded?'sí':'no'}
-<b>planeta</b> ${p.planet.name}   <b>r</b> ${r.toFixed(1)}   <b>R</b> ${p.planet.R}
-<b>g = G·M/r²</b> = ${p.gmag.toFixed(1)} m/s²
-<b>v</b> horiz ${vh.toFixed(1)} · vert ${vy.toFixed(1)}
-<b>v_escape = √(2·g·r)</b> = ${vesc.toFixed(1)}
-<b>dash</b> ${p.dashCD>0?'recargando':'listo'}${p.grounded?'':(p.airDash?' (aire ✓)':' (aire ✗)')}   <b>enemigos</b> ${alive}/${enemies.length}`;
-}
-function toggleDebug(){ debugOn=!debugOn; document.getElementById('tDbg').classList.toggle('on',debugOn); }
-
-/* =========================================================
-   HUD Y BOTONES
-   ========================================================= */
-const heartsEl=document.getElementById('hearts');
-function renderHearts(hit){
-  let s=''; for(let i=0;i<CFG.maxHP;i++) s+=`<span class="${i<player.hp?'':'off'}">❤️</span>`;
-  heartsEl.innerHTML=s;
-  if(hit){ heartsEl.classList.add('hit'); setTimeout(()=>heartsEl.classList.remove('hit'),150); }
-}
-let timeScale=1;
-document.getElementById('tDbg').onclick=toggleDebug;
-document.getElementById('tGrav').onclick=e=>{ const opts=[0.5,1,1.5,2]; gravMul=opts[(opts.indexOf(gravMul)+1)%opts.length]; e.target.textContent='g×'+gravMul.toFixed(1); };
-document.getElementById('tTime').onclick=e=>{ const opts=[1,0.5,0.25]; timeScale=opts[(opts.indexOf(timeScale)+1)%opts.length]; e.target.textContent='⏱'+timeScale+'x'; };
-document.getElementById('tEnem').onclick=()=>spawnEnemies();
-document.getElementById('tCam').onclick=()=>{ input.recenter=true; };
-document.getElementById('tSuit').onclick=()=>{ suitIdx=(suitIdx+1)%SUITS.length; applyLook(); };
-document.getElementById('tAcc').onclick=()=>{ accIdx=(accIdx+1)%ACCS.length; applyLook(); };
-let lastAtkLabel='';
-function hud(dt){
-  const lbl = player.grounded ? 'PUÑO' : 'PISOTÓN';
-  if(lbl!==lastAtkLabel){ bAtk.textContent=lbl; lastAtkLabel=lbl; }
-  hudDebug(dt);
-}
-
-let paused=true;
-const intro=document.getElementById('intro');
-intro.addEventListener('pointerdown',e=>{ e.preventDefault(); intro.style.display='none'; paused=false; });
-addEventListener('keydown',()=>{ if(paused){ intro.style.display='none'; paused=false; } });
-
-/* =========================================================
-   BUCLE PRINCIPAL (física a paso fijo de 1/120 s)
-   ========================================================= */
-const DT=1/120;
-function step(dt){ stepPlayer(dt); stepEnemies(dt); stepContacts(); }
-
-spawnEnemies(); respawnPlayer();
-let last=performance.now(), acc=0;
-function frame(now){
-  requestAnimationFrame(frame);
-  const dt=Math.min((now-last)/1000,0.1); last=now;
-  if(!paused){
-    acc+=dt*timeScale; let n=0;
-    while(acc>=DT && n<16){ step(DT); acc-=DT; n++; }
-    if(n>=16) acc=0;
-  }
-  updateVisuals(paused?0:dt*timeScale);
-  updateCamera(dt);
-  renderer.render(scene,camera);
-  hud(dt);
-}
-requestAnimationFrame(frame);
-
-// gancho para pruebas automáticas
-window.__game={player,enemies:()=>enemies,input,PLANETS,step,cam,pause:v=>{paused=v;}};
-</script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>

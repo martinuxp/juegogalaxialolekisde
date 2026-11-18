@@ -1,0 +1,137 @@
+/* =========================================================
+   estilos.css · Cómo se ven los botones, el HUD y los menús
+   ========================================================= */
+:root {
+  --sl: env(safe-area-inset-left, 0px); --sr: env(safe-area-inset-right, 0px);
+  --st: env(safe-area-inset-top, 0px);  --sb: env(safe-area-inset-bottom, 0px);
+  --ui: rgba(255,255,255,.14); --uiB: rgba(255,255,255,.35);
+  --verde: #7dffa8; --naranjo: #ff8a5c; --lila: #b9c3ff;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent }
+html, body {
+  margin: 0; height: 100%; overflow: hidden; background: #05060f; color: #fff;
+  font-family: ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overscroll-behavior: none;
+}
+canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100% }
+button { font-family: inherit; cursor: pointer }
+.oculto { display: none !important }
+#touch { position: fixed; inset: 0; z-index: 1 }
+#grain { position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: .07; background-size: 256px 256px }
+
+/* ---------- HUD ---------- */
+#top { position: fixed; z-index: 5; top: calc(8px + var(--st)); left: calc(10px + var(--sl)); right: calc(10px + var(--sr));
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; pointer-events: none }
+#hearts { font-size: 17px; letter-spacing: 1px; white-space: nowrap; text-shadow: 0 2px 6px #000; transition: transform .15s }
+#hearts.hit { transform: scale(1.25) }
+#hearts .off { opacity: .22 }
+#nombreJug { font: 700 12px ui-rounded, system-ui, sans-serif; opacity: .8; margin-top: 2px; text-shadow: 0 1px 4px #000 }
+#tools { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; pointer-events: auto; max-width: calc(100vw - 140px) }
+.tb { background: var(--ui); border: 1px solid var(--uiB); color: #fff; border-radius: 10px; padding: 7px 9px;
+  font: 600 12px ui-monospace, Menlo, monospace; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px) }
+.tb.on { background: rgba(120,200,255,.35) }
+body:not(.lab) .tb.lab { display: none }
+
+#objetivo { position: fixed; z-index: 4; left: 50%; transform: translateX(-50%); top: calc(54px + var(--st));
+  max-width: min(92vw, 520px); text-align: center; font: 600 13px/1.35 ui-rounded, system-ui, sans-serif;
+  background: rgba(8,10,24,.55); border: 1px solid rgba(255,255,255,.16); padding: 7px 12px; border-radius: 12px;
+  pointer-events: none; transition: opacity .4s }
+#objetivo:empty { opacity: 0 }
+#objetivo.nuevo { animation: pulso .9s ease-out }
+@keyframes pulso { 0% { transform: translateX(-50%) scale(1.08); border-color: #fff } 100% { transform: translateX(-50%) scale(1) } }
+
+#toast { position: fixed; z-index: 12; left: 50%; top: 38%; transform: translate(-50%,-50%) scale(.96); opacity: 0;
+  text-align: center; font: 800 22px/1.25 ui-rounded, system-ui, sans-serif; text-shadow: 0 3px 14px #000;
+  pointer-events: none; transition: opacity .35s, transform .35s; max-width: 88vw }
+#toast.ver { opacity: 1; transform: translate(-50%,-50%) scale(1) }
+#toast small { display: block; font-size: 14px; font-weight: 600; opacity: .85; margin-top: 6px }
+
+/* barra del supersalto */
+#barra { position: fixed; z-index: 6; left: 50%; transform: translateX(-50%); top: calc(136px + var(--st));
+  width: min(86vw, 380px); background: rgba(8,10,24,.7); border: 1px solid rgba(255,255,255,.2); border-radius: 14px;
+  padding: 8px 12px 9px; pointer-events: none; opacity: 0; transition: opacity .25s; font: 600 12px ui-monospace, Menlo, monospace }
+#barra.ver { opacity: 1 }
+#barra .fila { display: flex; justify-content: space-between; gap: 8px }
+#barra .chica { margin-top: 6px; opacity: .8; font-size: 11px }
+#barraRes.vuelve { color: var(--naranjo) } #barraRes.llega { color: var(--verde) } #barraRes.escapa { color: var(--lila) }
+#barra .riel { position: relative; height: 14px; margin-top: 6px; border-radius: 7px; background: rgba(255,255,255,.12); overflow: visible }
+#barraLlena { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 7px; background: linear-gradient(90deg,#4fb6ff,#b9c3ff) }
+#barraMarca { position: absolute; top: -5px; bottom: -5px; width: 3px; margin-left: -1.5px; background: #fff; border-radius: 2px }
+#barraMarca span { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); font-size: 10px; white-space: nowrap }
+
+#dbg { position: fixed; z-index: 4; bottom: calc(200px + var(--sb)); left: calc(10px + var(--sl));
+  font: 11px/1.45 ui-monospace, Menlo, monospace; background: rgba(0,0,0,.5); padding: 8px 10px; border-radius: 10px;
+  pointer-events: none; white-space: pre; max-width: calc(100vw - 20px); display: none }
+#dbg b { color: #8fd3ff; font-weight: 600 }
+
+/* joystick */
+#joy { position: fixed; z-index: 3; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%;
+  border: 2px solid var(--uiB); background: rgba(255,255,255,.06); display: none; pointer-events: none }
+#knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%;
+  background: rgba(255,255,255,.35); border: 2px solid rgba(255,255,255,.6) }
+#joyHint { position: fixed; z-index: 2; left: calc(28px + var(--sl)); bottom: calc(30px + var(--sb));
+  width: 110px; height: 110px; border-radius: 50%; border: 2px dashed rgba(255,255,255,.18); pointer-events: none;
+  display: grid; place-items: center; font-size: 11px; color: rgba(255,255,255,.4); text-align: center }
+
+/* botones de acción */
+.ab { position: fixed; z-index: 5; border-radius: 50%; border: 2px solid var(--uiB); background: var(--ui); color: #fff;
+  font: 800 12px system-ui, sans-serif; letter-spacing: .5px; display: grid; place-items: center; touch-action: none;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px) }
+.ab.down { background: rgba(255,255,255,.4); transform: scale(.93) }
+#bJump { width: 86px; height: 86px; right: calc(18px + var(--sr)); bottom: calc(24px + var(--sb)); border-color: #7fd1ff }
+#bAtk { width: 70px; height: 70px; right: calc(116px + var(--sr)); bottom: calc(30px + var(--sb)); border-color: #ff8f8f }
+#bDash { width: 66px; height: 66px; right: calc(36px + var(--sr)); bottom: calc(122px + var(--sb)); border-color: #ffd36b }
+#bSuper { width: 70px; height: 70px; right: calc(124px + var(--sr)); bottom: calc(112px + var(--sb)); border-color: var(--verde);
+  box-shadow: 0 0 18px rgba(125,255,168,.35) }
+
+/* ---------- MENÚ INICIAL: tranquilo, abajo a la izquierda ---------- */
+#menu { position: fixed; inset: 0; z-index: 8; display: flex; flex-direction: column; justify-content: space-between;
+  padding: calc(9vh + var(--st)) calc(28px + var(--sr)) calc(26px + var(--sb)) calc(28px + var(--sl));
+  background: linear-gradient(180deg, rgba(10,12,22,.35) 0%, rgba(10,12,22,0) 35%, rgba(10,12,22,0) 55%, rgba(10,12,22,.55) 100%);
+  animation: aparecer 2.2s ease-out }
+@keyframes aparecer { from { opacity: 0 } to { opacity: 1 } }
+#menu h1 { font: 400 clamp(40px, 11vw, 76px)/1 var(--serif); letter-spacing: .02em; margin: 0; text-shadow: 0 2px 30px rgba(0,0,0,.35) }
+#menu .titulo p { font: italic 400 clamp(15px, 4vw, 19px)/1.4 var(--serif); margin: 10px 0 0; opacity: .85 }
+#menu .botones { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: auto }
+.mb { background: none; border: 0; color: #fff; font: 400 21px/1.2 var(--serif); padding: 7px 2px; opacity: .78;
+  text-shadow: 0 1px 12px rgba(0,0,0,.5); transition: opacity .2s, transform .2s }
+.mb:hover, .mb:focus-visible { opacity: 1; transform: translateX(4px); outline: none }
+.mb.principal { font-size: 27px; opacity: 1 }
+.mb.chico { font-size: 17px; padding: 4px 0 }
+#menu .pie { font: 11px ui-monospace, Menlo, monospace; opacity: .5; margin-top: 18px }
+
+/* panel de personaje y nivel completo */
+#personaje, #completo { position: fixed; inset: 0; z-index: 11; display: grid; place-items: center; padding: 20px;
+  background: rgba(6,8,16,.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px) }
+.card { width: min(92vw, 380px); background: rgba(18,20,34,.86); border: 1px solid rgba(255,255,255,.16); border-radius: 18px;
+  padding: 20px 22px; display: flex; flex-direction: column; gap: 12px }
+.card h2 { font: 400 28px var(--serif); margin: 0 0 4px }
+.card p { margin: 0; line-height: 1.5; font-size: 15px; opacity: .9 }
+.card label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; opacity: .9 }
+.card input { font: 600 17px ui-rounded, system-ui, sans-serif; padding: 9px 12px; border-radius: 10px; color: #fff;
+  border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); user-select: text; -webkit-user-select: text }
+.opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px }
+.swatches { display: flex; gap: 8px }
+.swatches button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25) }
+.swatches button.on { border-color: #fff; transform: scale(1.12) }
+.seg { display: flex; border: 1px solid rgba(255,255,255,.25); border-radius: 10px; overflow: hidden }
+.seg button { background: none; border: 0; color: #fff; padding: 7px 10px; font: 600 13px ui-rounded, system-ui, sans-serif; opacity: .6 }
+.seg button.on { background: rgba(255,255,255,.18); opacity: 1 }
+.card .mb { text-align: left }
+
+/* ---------- HISTORIA ---------- */
+#historia { position: fixed; inset: 0; z-index: 9; background: #000 }
+#hCaja { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); width: min(88vw, 560px); text-align: center }
+#hQuien { font: 600 12px ui-monospace, Menlo, monospace; letter-spacing: .3em; opacity: .45; margin-bottom: 14px }
+#negro { position: fixed; inset: 0; z-index: 7; background: #000; opacity: 0; pointer-events: none; transition: opacity 1.8s ease-out }
+#negro.ver { opacity: 1; transition: none }
+#saltarCine { position: fixed; z-index: 9; top: calc(12px + var(--st)); right: calc(12px + var(--sr)); font-family: ui-rounded, system-ui, sans-serif }
+#hTexto { font: italic 400 clamp(18px, 4.6vw, 25px)/1.45 var(--serif); text-shadow: 0 2px 16px #000;
+  opacity: 0; transition: opacity 1.1s; min-height: 5em }
+#hTexto.ver { opacity: 1 }
+#hSaltar { position: absolute; top: calc(12px + var(--st)); right: calc(12px + var(--sr)); font-family: ui-rounded, system-ui, sans-serif }
+#hToca { position: absolute; left: 0; right: 0; bottom: calc(5vh + var(--sb)); text-align: center; font-size: 12px; opacity: .45 }
+
+#err { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; padding: 24px; text-align: center; background: #05060f; line-height: 1.6 }
+#err code { background: rgba(255,255,255,.12); padding: 2px 6px; border-radius: 6px }
