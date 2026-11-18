@@ -24,6 +24,8 @@ Hay dos formas:
 | Gravitación de Newton | `g = G·M / r² = g0·(R/r)²` | Todo: caminar, saltar, caer en cada planeta |
 | Velocidad de escape | `v_esc = √(2·G·M / r)` | Cañón de Columba (y SÚPER en el Laboratorio): barra con la marca de `v_esc` y línea que predice el vuelo |
 
+En el nivel 1 cada tramo se pasa con una mecánica: saltos de 6 m, huecos de 14,5 m que piden salto + dash (un salto llega a ~12,9 m, medido) y muros de 5,5 m (el salto sube ~3,9 m = v²/2g) que se bajan con un pisotón sobre el botón.
+
 Simplificaciones: en cada punto manda solo el planeta que más atrae; sin aire ni roce; el impulso del cañón es instantáneo.
 
 ## Pruebas de física
@@ -42,9 +44,9 @@ que la altura máxima coincida con la conservación de la energía y que el cañ
 | Mover | joystick (mitad izquierda) | WASD / flechas |
 | Cámara | arrastrar a la derecha | Q / E, mouse, R para centrar |
 | Saltar | SALTO | Espacio |
-| Puño / pisotón (en el aire) | PUÑO | J |
+| Puño / pisotón (en el aire) / leer cartel | botón del guante (cambia de ícono) | J |
 | Dash | DASH | K / Shift |
-| Cargar cañón / supersalto | SÚPER (mantener y soltar) | L |
+| Cargar cañón / supersalto | botón del cañón (mantener y soltar) | L |
 | Panel de física | DEBUG | G |
 
 ## Archivos
@@ -62,3 +64,5 @@ que la altura máxima coincida con la conservación de la energía y que el cañ
 | `js/columba3d.js`, `js/menu.js` | Playa del menú (con la marea) y personalización |
 | `js/despertar.js` | Diálogo inicial y cinemática del despertar |
 | `js/camara.js`, `js/entrada.js`, `js/ui.js` | Cámara, controles y HUD |
+| `js/dialogo.js` | Caja de diálogo de los carteles (pausa el juego) |
+| `js/iconos.js` | Íconos SVG (Iconoir, MIT, y algunos propios); el juego no usa emojis |

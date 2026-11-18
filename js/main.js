@@ -6,6 +6,7 @@
      'dialogo'  → pantalla negra con el diálogo
      'cine'     → cinemática del despertar
      'juego'    → jugando
+     'cartel'   → leyendo un cartel (el juego queda en pausa)
      'completo' → pantalla de nivel completo
 
    La física avanza a PASO FIJO de 1/120 s: si el celular va
@@ -18,15 +19,17 @@ import { player, stepPlayer, updatePlayerVisuals } from './jugador.js';
 import { stepEnemies, updateEnemyVisuals } from './enemigos.js';
 import { stepContacts } from './combate.js';
 import { stepFx } from './efectos.js';
-import { updateCamera } from './camara.js';
-import { animarMundo } from './mundo.js';
+import { updateCamera, cam } from './camara.js';
+import { animarMundo, piezas } from './mundo.js';
 import { cargarNivel, stepNivel } from './nivel.js';
 import { actualizarEscape } from './mecanicas/escape.js';
 import { actualizarHUD, mostrarHUD, toast, tituloNivel } from './ui.js';
 import { mostrarMenu, conectarMenu, abrirPersonaje, jugadorALaPlaya, animarJugadorMenu } from './menu.js';
 import { escenaColumba, camColumba, actualizarColumba, camaraPlaya, _depurar } from './columba3d.js';
 import { iniciarDialogo, iniciarDespertar, actualizarDespertar, saltarDespertar } from './despertar.js';
-import { limpiarEntrada } from './entrada.js';
+import { limpiarEntrada, input } from './entrada.js';
+import { pintarIconos } from './iconos.js';
+import './dialogo.js';
 import { NIVELES, LABORATORIO } from './niveles/index.js';
 
 window.__gameStarted = true;
@@ -88,7 +91,6 @@ function jugar() {
 $('tMenu').onclick = () => irAlMenu();
 $('saltarCine').onclick = () => saltarDespertar();
 addEventListener('keydown', e => { if (juego.modo === 'cine' && (e.code === 'Escape' || e.code === 'Enter')) saltarDespertar(); });
-escuchar('agua', () => toast('¡Splash!<small>El agua no te sostiene: vuelves a tierra</small>', 1600));
 
 /* ---------- HORIZONTAL OBLIGATORIO EN CELULAR ----------
    El navegador no deja girar la pantalla solo. Lo que sí podemos:
@@ -149,12 +151,13 @@ function frame(now) {
 }
 
 /* ---------- arranque ---------- */
+pintarIconos();
 irAlMenu();
 requestAnimationFrame(frame);
 
 // gancho para pruebas automáticas (Playwright): permite avanzar la física a mano
 window.__game = {
-  juego, player, step, ajustes,
+  juego, player, step, ajustes, input, cam, piezas,
   enemies: () => juego.enemigos,
   jugarNivel: i => { limpiarEntrada(); empezarNivel(i); },
   laboratorio: () => { mostrarMenu(false); jugadorALaPlaya(false); cargarNivel(LABORATORIO); juego.modo = 'juego'; mostrarHUD(true); },

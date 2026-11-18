@@ -33,6 +33,7 @@ export const mundo = {
   planetas: [],
   rocas: [],
   solidos: [],
+  muros: [],      // cajas (muros que se pueden bajar): chocan, pero no atraen
   gravMul: 1,
 };
 
@@ -44,6 +45,17 @@ export function definirMundo(planetas, rocas) {
   mundo.rocas.push(...rocas);
   mundo.solidos.length = 0;
   mundo.solidos.push(...planetas, ...rocas);
+  mundo.muros.length = 0;
+}
+
+/**
+ * Muro = caja orientada. c: centro; x, y, z: sus 3 ejes (vectores
+ * unitarios, y = "arriba" del muro); medio: la mitad de cada medida.
+ */
+export function agregarMuro(c, x, y, z, medio) {
+  const m = { c: c.clone(), x: x.clone(), y: y.clone(), z: z.clone(), medio: medio.clone(), muro: true };
+  mundo.muros.push(m);
+  return m;
 }
 
 /** G·M del planeta (con el multiplicador g× aplicado). */
@@ -132,7 +144,38 @@ export function collide(b) {
       toco = s;
     }
   }
+  for (const m of mundo.muros) if (chocarMuro(b, m)) toco = m;
   return toco;
+}
+
+/**
+ * Choque esfera–caja: buscamos el punto de la caja más cercano al
+ * centro del cuerpo (se "aprieta" el punto dentro de la caja, eje
+ * por eje). Si está a menos de r, empujamos hacia afuera.
+ */
+const _n = new V3();
+function chocarMuro(b, m) {
+  _n.copy(b.pos).sub(m.c);
+  const l = [_n.dot(m.x), _n.dot(m.y), _n.dot(m.z)];             // posición en los ejes del muro
+  const h = [m.medio.x, m.medio.y, m.medio.z];
+  const q = l.map((v, i) => Math.max(-h[i], Math.min(h[i], v)));  // punto de la caja más cercano
+  let n = l.map((v, i) => v - q[i]);
+  let d = Math.hypot(n[0], n[1], n[2]);
+  if (d >= b.r) return false;
+  if (d < 1e-6) {
+    // el centro quedó ADENTRO de la caja: sale por la cara más cercana
+    const falta = h.map((v, i) => v - Math.abs(l[i]));
+    const i = falta.indexOf(Math.min(...falta));
+    n = [0, 0, 0]; n[i] = Math.sign(l[i]) || 1;
+    q[i] = n[i] * h[i];
+  } else n = n.map(v => v / d);
+  _n.set(0, 0, 0).addScaledVector(m.x, n[0]).addScaledVector(m.y, n[1]).addScaledVector(m.z, n[2]);
+  b.pos.copy(m.c).addScaledVector(m.x, q[0]).addScaledVector(m.y, q[1]).addScaledVector(m.z, q[2])
+    .addScaledVector(_n, b.r);                                     // queda justo tocando la caja
+  const vn = b.vel.dot(_n);
+  if (vn < 0) b.vel.addScaledVector(_n, -vn);                      // se quita la velocidad hacia adentro
+  if (_n.dot(b.up) > 0.45) b.grounded = true;
+  return true;
 }
 
 /* ---------------------------------------------------------
@@ -197,6 +240,7 @@ export function simularTrayectoria(pos0, vel0, { dt = 1 / 120, tMax = 12, radio 
 export function superficieEn(P, dir) {
   let mejor = P.R;
   for (const s of mundo.solidos) {
+    if (s !== P && s.planeta !== P) continue;     // solo P y SUS islas y rocas (no otro planeta que esté en esa dirección)
     // rayo desde el centro de P hacia afuera: buscamos dónde sale de la esfera s
     const ox = P.c.x - s.c.x, oy = P.c.y - s.c.y, oz = P.c.z - s.c.z;
     const b = ox * dir.x + oy * dir.y + oz * dir.z;

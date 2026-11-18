@@ -16,6 +16,7 @@ import { DIFICULTADES } from './config.js';
 import { mallaJugador, applyLook, SUITS, SUIT_NOMBRES, ACCS, ACC_NOMBRES } from './jugador.js';
 import { escenaColumba, PLAYA, estadoSegunProgreso } from './columba3d.js';
 import { NIVELES } from './niveles/index.js';
+import { icono } from './iconos.js';
 
 const $ = id => document.getElementById(id);
 const acciones = { jugar: null, historia: null, laboratorio: null, nivel: null };
@@ -85,11 +86,11 @@ function pintarPersonaje() {
     b.onclick = () => { ajustes.traje = i; applyLook(); guardarAjustes(); pintarPersonaje(); };
     $('pTrajes').appendChild(b);
   });
-  $('pAcc').textContent = ACC_NOMBRES[ajustes.accesorio] + ' ›';
+  $('pAcc').innerHTML = `<span>${ACC_NOMBRES[ajustes.accesorio]}</span>${icono('flecha', 2)}`;
   $('pDif').innerHTML = '';
   for (const [k, d] of Object.entries(DIFICULTADES)) {
     const b = document.createElement('button');
-    b.textContent = `${d.nombre} ${'♥'.repeat(1)}${d.corazones}`;
+    b.innerHTML = `${d.nombre} <span class="dCor">${icono('corazon')}${d.corazones}</span>`;
     b.className = k === ajustes.dificultad ? 'on' : '';
     b.onclick = () => { ajustes.dificultad = k; guardarAjustes(); pintarPersonaje(); };
     $('pDif').appendChild(b);

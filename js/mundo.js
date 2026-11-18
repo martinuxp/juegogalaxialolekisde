@@ -11,17 +11,20 @@
    Lo que asoma sobre el agua parece una isla redonda.
    El mar NO es sólido: si caes al agua, vuelves a tierra.
    ========================================================= */
-import { THREE, V3, rng } from './util.js';
-import { scene, toon, outline, planetGeo, faceNormal, cartel, gradMap } from './escena.js';
-import { definirMundo, mundo, superficieEn } from './fisica.js';
+import { THREE, V3, rng, tangent } from './util.js';
+import { scene, toon, outline, planetGeo, faceNormal, orient, cartel, gradMap } from './escena.js';
+import { definirMundo, mundo, superficieEn, agregarMuro } from './fisica.js';
 import { juego } from './estado.js';
+import { iconoEnCanvas } from './iconos.js';
 
 let grupo = null;          // todo lo del nivel cuelga de aquí, así se borra fácil
 export const piezas = {    // cosas del nivel que nivel.js necesita mover o mostrar
   fragmento: null,
   canon: null,
-  carteles: [],
+  carteles: [],     // { obj, pos, arriba, paginas, icono }
   flores: null,
+  muros: [],        // { mesh, solido, base }: los muros que baja el botón
+  boton: null,      // { mesh, pos, arriba, apretado }
 };
 
 /** Nivel "del suelo" de un planeta: el mar si tiene, si no su radio. */
@@ -42,14 +45,15 @@ export function limpiarMundo() {
   if (!grupo) return;
   grupo.traverse(o => {
     if (o.geometry) o.geometry.dispose();
-    if (o.material) {
-      if (o.material.map && o.material.map.isCanvasTexture) o.material.map.dispose();
-      o.material.dispose();
+    for (const m of [].concat(o.material || [])) {      // puede ser un material o una lista
+      if (m.map && m.map.isCanvasTexture) m.map.dispose();
+      m.dispose();
     }
   });
   scene.remove(grupo);
   grupo = null;
   piezas.fragmento = null; piezas.canon = null; piezas.carteles = []; piezas.flores = null;
+  piezas.muros = []; piezas.boton = null;
   juego.pads = null;
 }
 
@@ -157,6 +161,77 @@ function crearCanon(P, dir) {
   return g;
 }
 
+/* ---- cartel: poste de madera + tabla con un ícono (se lee con el botón LEER) ---- */
+const _norte = new V3(0, 1, 0);
+function crearCartel(P, c) {
+  const suelo = puntoEnSuelo(P, c.dir, 0);
+  const obj = new THREE.Group();
+  obj.position.copy(suelo);
+  // la tabla mira hacia donde viene el jugador (hacia el polo norte, el inicio del camino)
+  const mira = tangent(new V3(), c.mira || _norte, c.dir);
+  if (mira.lengthSq() < 1e-6) mira.set(0, 0, 1);
+  orient(obj, c.dir, mira.normalize());
+  const madera = toon(0x8a5a3c), clara = toon(0xc49a6c);
+  const poste = outline(new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 1.5, 8), madera), 0.03);
+  poste.position.y = 0.75;
+  // tabla: la cara de adelante (+Z) lleva el dibujo del ícono
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 160;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#c49a6c'; g.fillRect(0, 0, 256, 160);
+  g.strokeStyle = 'rgba(90,55,30,.35)'; g.lineWidth = 3;
+  for (let y = 26; y < 160; y += 34) { g.beginPath(); g.moveTo(0, y); g.lineTo(256, y + 4); g.stroke(); }   // vetas
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  iconoEnCanvas(g, c.icono || 'leer', 70, 22, 116, '#3b2414', 2.4).then(() => { tex.needsUpdate = true; });
+  const frente = toon(0xffffff, { map: tex });
+  const tabla = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.95, 0.12), [clara, clara, clara, clara, frente, clara]);
+  tabla.position.y = 1.55;
+  outline(tabla, 0.04);
+  obj.add(poste, tabla);
+  return { obj, pos: suelo.clone().addScaledVector(c.dir, 1), arriba: c.dir.clone(), paginas: c.paginas, icono: c.icono };
+}
+
+/* ---- muros: un cuadrado de 4 cajas alrededor del cañón ---- */
+function crearMuros(P, d) {
+  const centro = puntoEnSuelo(P, d.dir, 0);
+  const arriba = d.dir.clone();
+  const x = tangent(new V3(), new V3(1, 0, 0), arriba).normalize();
+  const z = new V3().crossVectors(x, arriba).normalize();
+  const piedra = toon(0x8d8a9e, { flatShading: true }), borde = toon(0x6c6880);
+  const hundido = 0.6;                                  // parte que queda bajo el suelo (por la curvatura)
+  const altoTotal = d.alto + hundido;
+  for (const [eje, signo] of [[x, 1], [x, -1], [z, 1], [z, -1]]) {
+    const otro = eje === x ? z : x;
+    // medio = la mitad de cada medida (ancho, alto, grosor) en los ejes del muro
+    const largo = d.lado + d.grosor;                    // cubre las esquinas
+    const c = centro.clone().addScaledVector(eje, signo * d.lado).addScaledVector(arriba, altoTotal / 2 - hundido);
+    const medio = new V3(d.grosor / 2, altoTotal / 2, largo);
+    const solido = agregarMuro(c, eje, arriba, otro, medio);
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(d.grosor, altoTotal, largo * 2), piedra);
+    const tope = new THREE.Mesh(new THREE.BoxGeometry(d.grosor + 0.2, 0.25, largo * 2 + 0.2), borde);
+    tope.position.y = altoTotal / 2;
+    mesh.add(tope);
+    outline(mesh, 0.03);
+    mesh.position.copy(c);
+    const m4 = new THREE.Matrix4().makeBasis(eje, arriba, otro);
+    mesh.quaternion.setFromRotationMatrix(m4);
+    grupo.add(mesh);
+    piezas.muros.push({ mesh, solido, base: c.clone(), arriba, bajada: altoTotal + 0.1 });
+  }
+}
+
+/**
+ * Radio de la esfera de una isla para que asome "alto" metros y su orilla
+ * quede a "ancho" metros (medidos sobre el mar) de su centro.
+ * Rm = radio del mar; T = Rm + alto (punto más alto); φ = ancho / Rm (ángulo de la orilla).
+ * La orilla está en el mar (a Rm del centro del planeta) y a ρ del centro de la isla,
+ * que está a T − ρ del centro del planeta. Por el teorema del coseno:
+ *   ρ² = Rm² + (T − ρ)² − 2·Rm·(T − ρ)·cos φ   →   ρ = (Rm² + T² − 2·Rm·T·cos φ) / (2·(T − Rm·cos φ))
+ */
+export function radioDeIsla(Rm, alto, ancho) {
+  const T = Rm + alto, c = Math.cos(ancho / Rm);
+  return (Rm * Rm + T * T - 2 * Rm * T * c) / (2 * (T - Rm * c));
+}
+
 export function construirMundo(def) {
   limpiarMundo();
   grupo = new THREE.Group();
@@ -166,8 +241,9 @@ export function construirMundo(def) {
   const planetas = def.planetas.map(p => ({ ...p, c: p.c.clone() }));
   const islas = (def.islas || []).map(is => {
     const P = planetas[is.planeta];
+    const radio = is.radio || radioDeIsla(nivelBase(P), is.alto, is.ancho);
     const tope = nivelBase(P) + is.alto;                 // altura del punto más alto de la isla
-    return { c: P.c.clone().addScaledVector(is.dir, tope - is.radio), R: is.radio, isla: true, planeta: P };
+    return { c: P.c.clone().addScaledVector(is.dir, tope - radio), R: radio, isla: true, planeta: P };
   });
   const rocas = (def.rocas || []).map(r => {
     const P = planetas[r.planeta];
@@ -188,14 +264,20 @@ export function construirMundo(def) {
     outline(m, 0.05); m.position.copy(Rk.c); grupo.add(m);
   }
 
-  // 3) carteles con instrucciones (h = altura sobre el suelo)
+  // 3) carteles: un poste con una tabla. Con "paginas" se leen como diálogo (dialogo.js);
+  //    los que solo tienen "texto" (Laboratorio) son letreros flotantes como antes.
   for (const c of def.carteles || []) {
     const P = mundo.planetas[c.planeta];
+    if (c.paginas) {
+      const k = crearCartel(P, c);
+      grupo.add(k.obj); piezas.carteles.push(k);
+      continue;
+    }
     const s = cartel(c.texto, { ancho: c.ancho || 6 });
     s.position.copy(puntoEnSuelo(P, c.dir, c.h || 2.6));
     s.visible = !c.despues;
     s.userData.despues = !!c.despues;
-    grupo.add(s); piezas.carteles.push(s);
+    grupo.add(s);
   }
 
   // 4) cama de flores donde despierta el protagonista
@@ -203,6 +285,21 @@ export function construirMundo(def) {
 
   // 5) cañón (lanza con la velocidad que cargues)
   if (def.canon) { piezas.canon = crearCanon(mundo.planetas[def.canon.planeta], def.canon.dir); grupo.add(piezas.canon); }
+
+  // 5b) muros alrededor del cañón y el botón que los baja
+  if (def.muros) crearMuros(mundo.planetas[def.muros.planeta], def.muros);
+  if (def.boton) {
+    const P = mundo.planetas[def.boton.planeta];
+    const pos = puntoEnSuelo(P, def.boton.dir, 0);
+    const m = new THREE.Group();
+    const base = outline(new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.25, 0.16, 28), toon(0x5a5a6e)), 0.04);
+    const tapa = outline(new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.9, 0.22, 28), toon(0xff7a59, { emissive: 0x551a0a })), 0.05);
+    base.position.y = 0.04; tapa.position.y = 0.2;
+    m.add(base, tapa);
+    m.position.copy(pos); m.quaternion.setFromUnitVectors(new V3(0, 1, 0), def.boton.dir);
+    grupo.add(m);
+    piezas.boton = { mesh: m, tapa, pos, arriba: def.boton.dir.clone(), apretado: false };
+  }
 
   // 6) fragmento del alma lunar: cristal pálido que flota y gira
   if (def.fragmento) {
