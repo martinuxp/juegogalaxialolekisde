@@ -4,7 +4,7 @@
    Revisan que el juego cumpla las fórmulas, sin abrir el navegador.
    Si algo falla, el programa lo dice y termina con error.
    ========================================================= */
-import { mundo, definirMundo, gravedadEn, velocidadEscape, simularTrayectoria, GM } from '../js/fisica.js';
+import { mundo, definirMundo, gravedadEn, velocidadEscape, simularTrayectoria, GM, agregarMuro, collide, makeBody } from '../js/fisica.js';
 import { V3 } from '../js/util.js';
 
 let fallas = 0;
@@ -61,7 +61,8 @@ const { default: nivel1 } = await import('../js/niveles/nivel1-columba.js');
   const [C, I] = nivel1.planetas;
   definirMundo([C, I], []);
   const dir = I.c.clone().sub(C.c).normalize();
-  const boca = C.c.clone().addScaledVector(dir, (C.mar + nivel1.islas[2].alto) + 1.7);
+  const islaCanon = nivel1.islas.find(i => i.canon);
+  const boca = C.c.clone().addScaledVector(dir, (C.mar + islaCanon.alto) + 1.7);
   const ve = velocidadEscape(C, boca.length());
   let minimo = null;
   for (let v = 1; v < ve * 1.2; v += 0.1) {
@@ -70,6 +71,21 @@ const { default: nivel1 } = await import('../js/niveles/nivel1-columba.js');
   revisar('desde el cañón se puede llegar a Ícaro', minimo !== null);
   if (minimo) revisar('la velocidad mínima para llegar es menor que v_esc', minimo < ve,
     `mínima ${minimo.toFixed(1)} m/s = ${(100 * minimo / ve).toFixed(0)}% de v_esc (${ve.toFixed(1)} m/s)`);
+}
+
+/* ---- 5. Muros (cajas): el jugador no los atraviesa ---- */
+{
+  definirMundo([{ name: 'Suelo', c: new V3(0, -1000, 0), R: 1000, g: 20 }], []);
+  // muro de 1 m de grosor, 6 m de alto y 8 m de largo, parado en x = 0
+  agregarMuro(new V3(0, 3, 0), new V3(1, 0, 0), new V3(0, 1, 0), new V3(0, 0, 1), new V3(0.5, 3, 4));
+  const b = makeBody(0.6);
+  b.pos.set(-0.8, 1, 0); b.vel.set(10, 0, 0);            // va hacia el muro
+  collide(b);
+  revisar('el muro empuja al jugador hacia afuera', cerca(b.pos.x, -1.1, 1e-9), `x = ${b.pos.x.toFixed(3)}`);
+  revisar('y le quita la velocidad que iba hacia el muro', b.vel.x === 0);
+  b.pos.set(0, 6.4, 0); b.vel.set(0, -5, 0);             // cae encima del muro
+  collide(b);
+  revisar('encima del muro se puede parar', b.grounded && cerca(b.pos.y, 6.6, 1e-9), `y = ${b.pos.y.toFixed(3)}`);
 }
 
 console.log(fallas ? `\n${fallas} prueba(s) fallaron` : '\nTodas las pruebas pasaron');

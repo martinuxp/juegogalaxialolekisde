@@ -25,12 +25,12 @@
       <div id="nombreJug"></div>
     </div>
     <div id="tools">
-      <button class="tb" id="tMenu" title="Menú">☰</button>
-      <button class="tb" id="tGrav" title="Multiplicador de gravedad">g×1.0</button>
-      <button class="tb lab" id="tTime" title="Cámara lenta">⏱1x</button>
-      <button class="tb lab" id="tEnem" title="Reaparecer enemigos">↺👾</button>
-      <button class="tb" id="tCam" title="Centrar cámara">🎥</button>
-      <button class="tb" id="tDbg" title="Panel de física">DEBUG</button>
+      <button class="tb" id="tMenu" title="Menú" data-icono="menu"></button>
+      <button class="tb" id="tGrav" title="Multiplicador de gravedad"><span data-icono="gravedad"></span><span class="val">g×1.0</span></button>
+      <button class="tb lab" id="tTime" title="Cámara lenta"><span data-icono="tiempo"></span><span class="val">1x</span></button>
+      <button class="tb lab" id="tEnem" title="Reaparecer enemigos" data-icono="enemigos"></button>
+      <button class="tb" id="tCam" title="Centrar cámara" data-icono="camara"></button>
+      <button class="tb" id="tDbg" title="Panel de física" data-icono="debug"></button>
     </div>
   </div>
   <div id="objetivo"></div>
@@ -42,14 +42,24 @@
   <div id="dbg"></div>
   <div id="joyHint">mover<br>(arrastra)</div>
   <div id="joy"><div id="knob"></div></div>
-  <button class="ab" id="bAtk">PUÑO</button>
-  <button class="ab" id="bDash">DASH</button>
-  <button class="ab" id="bJump">SALTO</button>
-  <button class="ab oculto" id="bSuper">SÚPER</button>
+  <button class="ab" id="bAtk" title="Puño / pisotón (J)" data-icono="puno" data-grosor="2"></button>
+  <button class="ab" id="bDash" title="Dash (K)" data-icono="dash" data-grosor="2.2"></button>
+  <button class="ab" id="bJump" title="Salto (Espacio)" data-icono="salto" data-grosor="2"></button>
+  <button class="ab oculto" id="bSuper" title="Cañón / supersalto (L)" data-icono="super" data-grosor="2"></button>
 </div>
 <div id="toast"></div>
+
+<!-- caja de diálogo de los carteles (js/dialogo.js) -->
+<div id="cartelDlg" class="oculto">
+  <div id="cartelVelo"></div>
+  <div id="cdCaja">
+    <div id="cdIcono"></div>
+    <div id="cdTexto"></div>
+    <div id="cdPie"><span id="cdPagina"></span><span id="cdFlecha" data-icono="flecha" data-grosor="2.6"></span></div>
+  </div>
+</div>
 <div id="negro"></div>
-<div id="saltarCine" class="tb oculto">Saltar ›</div>
+<div id="saltarCine" class="tb oculto">Saltar <span data-icono="flecha"></span></div>
 
 <!-- ============ MENÚ INICIAL ============ -->
 <div id="menu" class="oculto">
@@ -86,7 +96,7 @@
     <div id="hQuien">? ? ?</div>
     <div id="hTexto"></div>
   </div>
-  <button class="tb" id="hSaltar">Saltar ›</button>
+  <button class="tb" id="hSaltar">Saltar <span data-icono="flecha"></span></button>
   <div id="hToca">toca para seguir</div>
 </div>
 
@@ -102,7 +112,7 @@
 </div>
 
 <!-- en celular el juego va en horizontal -->
-<div id="girar"><div><div class="cel">📱</div>Gira tu celular<br><small>Alma Lunar se juega en horizontal</small></div></div>
+<div id="girar"><div><div class="cel" data-icono="celular"></div>Gira tu celular<br><small>Alma Lunar se juega en horizontal</small></div></div>
 
 <div id="err"><div id="errTxt">No se pudo cargar el juego.</div></div>
 

@@ -198,6 +198,11 @@ export function stepPlayer(dt) {
     if (p.tieneSuper) { empezarCarga(p, null); return; }
   }
 
+  // LEER: junto a un cartel, el botón de ataque abre el diálogo (nivel.js decide si hay uno cerca)
+  if (input.atkQ > 0 && juego.cartelCerca && p.grounded && p.state === 'normal') {
+    input.atkQ = 0;
+    emitir('leer', juego.cartelCerca);
+  }
   // ATAQUE: en el suelo = puño; en el aire = pisotón
   if (input.atkQ > 0 && (p.state === 'normal' || p.state === 'dash')) {
     input.atkQ = 0;
@@ -258,6 +263,7 @@ export function stepPlayer(dt) {
     if (p.state === 'pound') {
       p.state = 'poundLand'; p.t = 0;
       shockwave(_t2.copy(p.pos).addScaledVector(p.up, -p.r), p.up, null); cam.shake = 0.35;
+      emitir('pisoton', _t2);
     }
   } else p.coyote -= dt;
 

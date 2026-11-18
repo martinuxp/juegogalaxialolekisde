@@ -12,6 +12,7 @@ import { mundo, velocidadEscape } from './fisica.js';
 import { escape } from './mecanicas/escape.js';
 import { spawnEnemies } from './enemigos.js';
 import { input, atajos } from './entrada.js';
+import { icono } from './iconos.js';
 
 const $ = id => document.getElementById(id);
 
@@ -19,7 +20,7 @@ const $ = id => document.getElementById(id);
 function renderHearts(hit) {
   const p = juego.jugador;
   let s = '';
-  for (let i = 0; i < p.maxHP; i++) s += `<span class="${i < p.hp ? '' : 'off'}">❤️</span>`;
+  for (let i = 0; i < p.maxHP; i++) s += `<span class="${i < p.hp ? '' : 'off'}">${icono('corazon')}</span>`;
   $('hearts').innerHTML = s;
   if (hit) { $('hearts').classList.add('hit'); setTimeout(() => $('hearts').classList.remove('hit'), 150); }
 }
@@ -41,7 +42,7 @@ export function toast(html, ms = 2600) {
   clearTimeout(toastT);
   toastT = setTimeout(() => el.classList.remove('ver'), ms);
 }
-escuchar('fragmento', () => toast('✦ Fragmento del alma lunar ✦<small>Desbloqueaste el SÚPER SALTO</small>', 3400));
+escuchar('fragmento', () => toast(`<span class="tIco">${icono('luna')}</span>Fragmento del alma lunar<small>Desbloqueaste el SÚPER SALTO</small>`, 3400));
 escuchar('reaparecer', motivo => {
   if (motivo === 'vacio') toast('Te perdiste en el espacio…<small>La gravedad era casi cero: nada te atrajo de vuelta</small>', 3200);
   else toast('Sin corazones…<small>Vuelves al inicio del nivel</small>');
@@ -51,7 +52,7 @@ escuchar('despegue', ({ v, vesc }) => {
 });
 escuchar('nivel', def => {
   document.body.classList.toggle('lab', !!def.laboratorio);
-  $('tGrav').textContent = 'g×1.0';
+  $('tGrav').querySelector('.val').textContent = 'g×1.0';
   mostrarNombre();
   // si viene la cinemática, el título se muestra cuando termina (main.js)
   setTimeout(() => { if (!def.laboratorio && juego.modo === 'juego') tituloNivel(); }, 0);
@@ -63,14 +64,14 @@ export function tituloNivel() {
 }
 
 /* ---------- botón SÚPER: aparece arriba del cañón (o si ya tienes el supersalto) ---------- */
-let etiquetaSuper = '';
+let iconoSuper = '';
 function actualizarBotonSuper() {
   const p = juego.jugador;
   const enCanon = !!juego.enCanon;
   $('bSuper').classList.toggle('oculto', !(p.tieneSuper || enCanon));
   $('bSuper').classList.toggle('llamar', enCanon && p.state !== 'carga');   // late para que lo veas
-  const txt = enCanon ? 'CAÑÓN' : 'SÚPER';
-  if (txt !== etiquetaSuper) { $('bSuper').textContent = txt; etiquetaSuper = txt; }
+  const ic = enCanon ? 'canon' : 'super';
+  if (ic !== iconoSuper) { $('bSuper').innerHTML = icono(ic, 2); iconoSuper = ic; }
 }
 
 /* ---------- barra del supersalto ---------- */
@@ -126,23 +127,27 @@ $('tDbg').onclick = toggleDebug;
 $('tGrav').onclick = e => {
   const opts = [0.5, 1, 1.5, 2];
   mundo.gravMul = opts[(opts.indexOf(mundo.gravMul) + 1) % opts.length];
-  e.target.textContent = 'g×' + mundo.gravMul.toFixed(1);
+  $('tGrav').querySelector('.val').textContent = 'g×' + mundo.gravMul.toFixed(1);
   toast(`Gravedad ×${mundo.gravMul.toFixed(1)}<small>Cambia G·M de todos los planetas: la marca de v<sub>esc</sub> se mueve</small>`, 2200);
 };
 $('tTime').onclick = e => {
   const opts = [1, 0.5, 0.25];
   juego.timeScale = opts[(opts.indexOf(juego.timeScale) + 1) % opts.length];
-  e.target.textContent = '⏱' + juego.timeScale + 'x';
+  $('tTime').querySelector('.val').textContent = juego.timeScale + 'x';
 };
 $('tEnem').onclick = () => spawnEnemies();
 $('tCam').onclick = () => { input.recenter = true; };
 
 /* ---------- se llama una vez por cuadro ---------- */
-let lastAtkLabel = '';
+let iconoAtk = '';
 export function actualizarHUD(dt) {
   const p = juego.jugador;
-  const lbl = p.grounded ? 'PUÑO' : 'PISOTÓN';
-  if (lbl !== lastAtkLabel) { $('bAtk').textContent = lbl; lastAtkLabel = lbl; }
+  // el botón de ataque cambia: LEER junto a un cartel, PUÑO en el suelo, PISOTÓN en el aire
+  const ic = juego.cartelCerca ? 'leer' : p.grounded ? 'puno' : 'pisoton';
+  if (ic !== iconoAtk) {
+    $('bAtk').innerHTML = icono(ic, 2); iconoAtk = ic;
+    $('bAtk').classList.toggle('leer', ic === 'leer');
+  }
   actualizarBotonSuper();
   actualizarBarra();
   hudDebug(dt);
