@@ -61,12 +61,12 @@ export default {
     { planeta: 0, dir: dirLL(80, 110), h: 1.8, ancho: 4.2, texto: 'Muévete: joystick o WASD\nCámara: arrastra a la derecha' },
     { planeta: 0, dir: dirLL(70, 205), h: 1.8, ancho: 4.2, texto: 'SALTO / Espacio\nMantén apretado = más alto' },
     { planeta: 0, dir: dirLL(46, 150), h: 2.0, ancho: 4.2, texto: 'PUÑO / J en el suelo\nEn el aire = PISOTÓN' },
-    { planeta: 0, dir: dirLL(3, 160), h: 2.4, ancho: 4.2, texto: 'CAÑÓN: súbete\nMantén SÚPER (L) y suelta' },
+    { planeta: 0, dir: dirLL(3, 160), h: 2.4, ancho: 4.2, texto: 'CAÑÓN: súbete\nMantén CAÑÓN (L) y suelta' },
   ],
 
   objetivos: {
     inicio: 'Llega al cañón de la última isla (mira hacia el planeta naranjo)',
-    canon: 'Mantén SÚPER y suelta: la línea punteada muestra dónde caerás',
+    canon: 'Mantén el botón CAÑÓN (o L) y suelta: la línea punteada muestra dónde caerás',
   },
 
   // se gana al aterrizar en este planeta
