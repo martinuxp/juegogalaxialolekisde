@@ -16,6 +16,7 @@
     touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
   canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
   #touch{position:fixed;inset:0;z-index:1}
+  #grain{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.07;background-size:256px 256px}
 
   /* barra superior */
   #top{position:fixed;z-index:5;top:calc(8px + var(--st));left:calc(10px + var(--sl));right:calc(10px + var(--sr));
@@ -23,12 +24,12 @@
   #hearts{font-size:17px;letter-spacing:1px;white-space:nowrap;text-shadow:0 2px 6px #000;transition:transform .15s}
   #hearts.hit{transform:scale(1.25)}
   #hearts .off{opacity:.22}
-  #tools{display:flex;gap:5px;flex-wrap:nowrap;justify-content:flex-end;pointer-events:auto}
+  #tools{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;pointer-events:auto;max-width:calc(100vw - 130px)}
   .tb{background:var(--ui);border:1px solid var(--uiB);color:#fff;border-radius:10px;padding:7px 8px;
     font:600 12px ui-monospace,Menlo,monospace;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
   .tb.on{background:rgba(120,200,255,.35)}
 
-  #dbg{position:fixed;z-index:4;top:calc(50px + var(--st));left:calc(10px + var(--sl));
+  #dbg{position:fixed;z-index:4;top:calc(96px + var(--st));left:calc(10px + var(--sl));
     font:11px/1.45 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.45);padding:8px 10px;border-radius:10px;
     pointer-events:none;white-space:pre;max-width:calc(100vw - 20px)}
   #dbg b{color:#8fd3ff;font-weight:600}
@@ -60,11 +61,15 @@
   #err{position:fixed;inset:0;z-index:20;display:none;place-items:center;padding:24px;text-align:center;background:#05060f}
 </style>
 <script type="importmap">
-{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
 </script>
 </head>
 <body>
 <div id="touch"></div>
+<div id="grain"></div>
 
 <div id="top">
   <div id="hearts"></div>
@@ -74,6 +79,8 @@
     <button class="tb" id="tTime">⏱1x</button>
     <button class="tb" id="tEnem" title="Reaparecer enemigos">↺👾</button>
     <button class="tb" id="tCam">🎥</button>
+    <button class="tb" id="tSuit" title="Color del traje">🎨</button>
+    <button class="tb" id="tAcc" title="Accesorio del casco">🎩</button>
   </div>
 </div>
 <div id="dbg"></div>
@@ -91,7 +98,8 @@
   <b>Teclado:</b> <span class="k">WASD</span> mover · <span class="k">Espacio</span> saltar · <span class="k">J</span> puño / pisotón · <span class="k">K</span> o <span class="k">Shift</span> dash · <span class="k">Q</span><span class="k">E</span> o mouse = cámara · <span class="k">R</span> centrar cámara.<br><br>
   • <b>Puño</b> en el suelo. En el aire, el mismo botón hace <b>pisotón</b> (golpe al suelo con onda expansiva).<br>
   • Salta encima de enemigos chicos y medianos. Al <b>grande</b> solo le duele el pisotón.<br>
-  • Los anillos celestes te lanzan a otro planeta.
+  • Los anillos celestes te lanzan a otro planeta.<br>
+  • 🎨 cambia el color del traje y 🎩 el accesorio del casco.
   <div class="go">Toca para empezar</div>
 </div></div>
 <div id="err"><div>No se pudo cargar el motor 3D (Three.js).<br>Revisa tu conexión y recarga la página.</div></div>
@@ -104,6 +112,7 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 window.__gameStarted = true;
 
 /* =========================================================
@@ -173,6 +182,46 @@ addEventListener('resize', fitCamera); fitCamera();
 scene.add(new THREE.HemisphereLight(0xcfe2ff, 0x2a2034, 1.15));
 const sun = new THREE.DirectionalLight(0xffffff, 1.7); sun.position.set(40,70,30); scene.add(sun);
 
+/* ---- ESTILO CARTOON: sombras en bloques + contorno negro + textura pintada ---- */
+// "rampa" de 3 tonos para el material toon (sombra / medio / luz)
+const gradMap = (()=>{ const t=new THREE.DataTexture(new Uint8Array([70,160,255]),3,1,THREE.RedFormat);
+  t.minFilter=t.magFilter=THREE.NearestFilter; t.needsUpdate=true; return t; })();
+// generador pseudoaleatorio con semilla: la textura sale igual cada vez
+function rng(seed){ return ()=>{ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; }; }
+// textura de manchas tipo pintura (gris claro → se multiplica por el color del material)
+function paintTex(seed,n=260,size=256){
+  const cv=document.createElement('canvas'); cv.width=cv.height=size; const g=cv.getContext('2d'), r=rng(seed);
+  g.fillStyle='#e6e6e6'; g.fillRect(0,0,size,size);
+  for(let i=0;i<n;i++){ const v=Math.floor(170+r()*85); g.fillStyle=`rgba(${v},${v},${v},${0.25+r()*0.35})`;
+    const x=r()*size,y=r()*size,rad=3+r()*16; for(const dx of [-size,0,size]) for(const dy of [-size,0,size]){ g.beginPath(); g.arc(x+dx,y+dy,rad,0,Math.PI*2); g.fill(); } }
+  const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
+}
+const paint = paintTex(7);
+function toon(color,extra={}){ return new THREE.MeshToonMaterial({ color, gradientMap:gradMap, map:paint, ...extra }); }
+// planeta pintado sin "polos": icosfera + manchas de color por vértice (sin textura que se estire)
+function planetGeo(R,color,seed){
+  const g=new THREE.IcosahedronGeometry(R,Math.min(18,Math.max(8,Math.round(R*0.9))));
+  const pos=g.attributes.position, nrm=g.attributes.normal, r=rng(seed), base=new THREE.Color(color), c=new THREE.Color(), n=new V3();
+  const blobs=Array.from({length:30},()=>{ const z=2*r()-1, a=r()*Math.PI*2, k=Math.sqrt(1-z*z);
+    return { d:new V3(k*Math.cos(a),z,k*Math.sin(a)), cos:Math.cos(0.12+r()*0.35), f:0.78+r()*0.34 }; });
+  const cols=new Float32Array(pos.count*3);
+  for(let i=0;i<pos.count;i++){
+    n.fromBufferAttribute(pos,i).normalize(); nrm.setXYZ(i,n.x,n.y,n.z);
+    let sh=1; for(const b of blobs) if(n.dot(b.d)>b.cos) sh*=b.f;
+    sh*=0.96+0.08*Math.sin(n.x*23+seed)*Math.sin(n.y*19)*Math.sin(n.z*21);
+    c.copy(base).multiplyScalar(sh); cols[i*3]=c.r; cols[i*3+1]=c.g; cols[i*3+2]=c.b;
+  }
+  g.setAttribute('color',new THREE.BufferAttribute(cols,3)); return g;
+}
+const outlineMat = new THREE.MeshBasicMaterial({ color:0x15121c, side:THREE.BackSide });
+// contorno "casco invertido": copia un poco más grande, solo caras traseras, en negro
+function outline(mesh,k=0.06){ const o=new THREE.Mesh(mesh.geometry,outlineMat); o.scale.setScalar(1+k); mesh.add(o); return mesh; }
+{ // grano sobre toda la pantalla (CSS, casi gratis)
+  const cv=document.createElement('canvas'); cv.width=cv.height=256; const g=cv.getContext('2d'), r=rng(3), img=g.createImageData(256,256);
+  for(let i=0;i<img.data.length;i+=4){ const v=r()*255; img.data[i]=img.data[i+1]=img.data[i+2]=v; img.data[i+3]=255; }
+  g.putImageData(img,0,0); document.getElementById('grain').style.backgroundImage=`url(${cv.toDataURL()})`;
+}
+
 { // estrellas
   const pts=[]; const d=new V3();
   for(let i=0;i<1600;i++){ d.randomDirection().multiplyScalar(320+Math.random()*120); pts.push(d.x,d.y,d.z); }
@@ -190,14 +239,13 @@ const upZ = new V3(0,0,1);
 function faceNormal(obj,n){ obj.quaternion.setFromUnitVectors(upZ,n); }
 
 for(const P of PLANETS){
-  const m=new THREE.Mesh(new THREE.SphereGeometry(P.R,64,32),
-    new THREE.MeshStandardMaterial({ map:checkerTex(hexCss(P.color),hexCss(P.color,0.72)), roughness:0.95 }));
-  m.position.copy(P.c); scene.add(m);
+  const m=new THREE.Mesh(planetGeo(P.R,P.color,11+P.R*7), toon(0xffffff,{map:null, vertexColors:true}));
+  outline(m,0.012); m.position.copy(P.c); scene.add(m);
 }
 for(const Rk of ROCKS){
   const m=new THREE.Mesh(new THREE.IcosahedronGeometry(Rk.R,1),
-    new THREE.MeshStandardMaterial({ color:0x8a8f9c, flatShading:true, roughness:1 }));
-  m.position.copy(Rk.c); scene.add(m);
+    toon(0x9a96a8,{flatShading:true}));
+  outline(m,0.05); m.position.copy(Rk.c); scene.add(m);
 }
 for(const pad of PADS){
   const P=PLANETS[pad.planet]; pad.pos=P.c.clone().addScaledVector(pad.dir,P.R);
@@ -306,7 +354,7 @@ document.addEventListener('gesturestart',e=>e.preventDefault());
 /* =========================================================
    CÁMARA (sigue al jugador y se reorienta con su "arriba")
    ========================================================= */
-const cam = { fwd:new V3(0,0,-1), up:new V3(0,1,0), pitch:0.45, dist:10.5, pos:new V3(0,30,20), look:new V3(), shake:0 };
+const cam = { fwd:new V3(0,0,-1), up:new V3(0,1,0), pitch:0.42, dist:8.5, pos:new V3(0,30,20), look:new V3(), shake:0 };
 const _c1=new V3(), _c2=new V3();
 function updateCamera(dt){
   const p=player;
@@ -333,19 +381,76 @@ const player = Object.assign(makeBody(CFG.r), {
   jumping:false, jumpCut:false, dashDir:new V3(), punchHit:new Set(), dashHit:new Set(),
   launch:null, launchCD:0, voidT:0, land:0,
 });
-const pl = {}; // malla del jugador
+const pl = {}; // malla del jugador: chibi con casco de vidrio y un planetita con ojos adentro
+const SUITS = [0x2f3d8f, 0xd9573b, 0x3f9b6a, 0xe8e2d4, 0x7d4bc9];      // azul noche, naranja, verde, blanco, morado
+const ACCS  = ['sombrero','lazo','ninguno'];
+let suitIdx=0, accIdx=0;
+function headTex(){ // planetita: océano + continentes
+  const cv=document.createElement('canvas'); cv.width=256; cv.height=128; const g=cv.getContext('2d'), r=rng(21);
+  g.fillStyle='#3fb6c9'; g.fillRect(0,0,256,128);
+  for(let i=0;i<18;i++){ g.fillStyle=i%3?'#7cc96a':'#5aa857'; const x=r()*256,y=20+r()*88,rad=8+r()*18;
+    for(const dx of [-256,0,256]){ g.beginPath(); g.ellipse(x+dx,y,rad*1.4,rad,0,0,Math.PI*2); g.fill(); } }
+  const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; t.wrapS=THREE.RepeatWrapping; return t;
+}
 {
   pl.group=new THREE.Group(); scene.add(pl.group);
   pl.body=new THREE.Group(); pl.group.add(pl.body);
-  const mat=new THREE.MeshStandardMaterial({color:0xf2f2f2, roughness:.5, emissive:0x000000});
-  const caps=new THREE.Mesh(new THREE.CapsuleGeometry(0.45,0.6,6,14),mat); caps.position.y=0.15; pl.body.add(caps);
-  const nose=new THREE.Mesh(new THREE.ConeGeometry(0.16,0.4,10),new THREE.MeshStandardMaterial({color:0xff4d4d}));
-  nose.rotation.x=Math.PI/2; nose.position.set(0,0.42,0.48); pl.body.add(nose);
-  pl.fist=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.34,0.34),new THREE.MeshStandardMaterial({color:0xffd36b,emissive:0x553300}));
-  pl.fist.visible=false; pl.body.add(pl.fist); pl.mat=mat;
+  const suit=toon(SUITS[0],{emissive:0x000000}); pl.mat=suit;
+  const grey=toon(0xb9b4c4), dark=toon(0x3a3446);
+  const add=(geo,mat,x,y,z,k=0.07)=>{ const m=outline(new THREE.Mesh(geo,mat),k); m.position.set(x,y,z); pl.body.add(m); return m; };
+  // cuerpo: más largo de lado (profundidad) que de frente → "rectangular de lado"
+  add(new RoundedBoxGeometry(0.62,0.5,0.74,4,0.17),suit,0,-0.2,0,0.05);
+  add(new THREE.CapsuleGeometry(0.11,0.08,4,10),dark,-0.15,-0.48,0.04);
+  add(new THREE.CapsuleGeometry(0.11,0.08,4,10),dark, 0.15,-0.48,0.04);
+  const armL=add(new THREE.CapsuleGeometry(0.09,0.2,4,10),suit,-0.38,-0.2,0.05); armL.rotation.z=-0.6;
+  const armR=add(new THREE.CapsuleGeometry(0.09,0.2,4,10),suit, 0.38,-0.2,0.05); armR.rotation.z= 0.6;
+  pl.arms=[armL,armR];
+  add(new RoundedBoxGeometry(0.42,0.38,0.2,3,0.07),grey,0,-0.14,-0.44,0.06);          // mochila
+  const collar=add(new THREE.TorusGeometry(0.31,0.06,8,28),grey,0,0.06,0,0.12); collar.rotation.x=Math.PI/2;
+  // cabeza = casco de vidrio con un planetita adentro
+  pl.head=new THREE.Group(); pl.head.position.y=0.44; pl.body.add(pl.head);
+  pl.planet=outline(new THREE.Mesh(new THREE.SphereGeometry(0.27,32,16), toon(0xffffff,{map:headTex()})),0.05);
+  pl.head.add(pl.planet);
+  pl.eyes=new THREE.Group(); pl.head.add(pl.eyes);
+  const white=new THREE.MeshBasicMaterial({color:0xffffff}), black=new THREE.MeshBasicMaterial({color:0x111111});
+  for(const sx of [-1,1]){
+    const eye=outline(new THREE.Mesh(new THREE.SphereGeometry(1,14,10),white),0.18); eye.scale.set(0.065,0.085,0.035); eye.position.set(sx*0.085,0.03,0.25); pl.eyes.add(eye);
+    const pup=new THREE.Mesh(new THREE.SphereGeometry(1,10,8),black); pup.scale.set(0.035,0.05,0.02); pup.position.set(sx*0.085,0.02,0.28); pl.eyes.add(pup);
+  }
+  // lunita que orbita adentro del casco (aparecerá al recuperar fragmentos del alma lunar)
+  pl.moon=outline(new THREE.Mesh(new THREE.SphereGeometry(0.045,12,8),toon(0xf3efe0)),0.12); pl.head.add(pl.moon);
+  // vidrio: casi transparente + brillo cartoon + contorno que siempre mira a la cámara
+  pl.glass=new THREE.Mesh(new THREE.SphereGeometry(0.43,32,20),new THREE.MeshBasicMaterial({color:0xcfefff,transparent:true,opacity:0.14,depthWrite:false}));
+  pl.head.add(pl.glass);
+  const shine=new THREE.Mesh(new THREE.TorusGeometry(0.33,0.022,6,20,1.1),new THREE.MeshBasicMaterial({color:0xffffff}));
+  shine.position.z=0.27; shine.rotation.z=Math.PI*0.55; pl.head.add(shine);
+  pl.ring=new THREE.Mesh(new THREE.RingGeometry(0.43,0.465,48),new THREE.MeshBasicMaterial({color:0x15121c,side:THREE.DoubleSide}));
+  pl.head.add(pl.ring);
+  // accesorios del casco (personalización)
+  pl.acc={};
+  const hat=new THREE.Group(); hat.position.set(0.04,0.4,0); hat.rotation.z=-0.15; pl.head.add(hat);
+  const hatMat=toon(0x1c1a22), band=toon(0xc93c3c);
+  hat.add(outline(new THREE.Mesh(new THREE.CylinderGeometry(0.27,0.27,0.035,24),hatMat),0.06));
+  const crown=outline(new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.18,0.3,24),hatMat),0.06); crown.position.y=0.16; hat.add(crown);
+  const bnd=new THREE.Mesh(new THREE.CylinderGeometry(0.185,0.185,0.06,24),band); bnd.position.y=0.05; hat.add(bnd);
+  pl.acc.sombrero=hat;
+  const bow=new THREE.Group(); bow.position.set(0.22,0.33,0.05); bow.rotation.z=-0.6; pl.head.add(bow);
+  const pink=toon(0xff6fae);
+  for(const sx of [-1,1]){ const w=outline(new THREE.Mesh(new THREE.SphereGeometry(1,12,8),pink),0.12); w.scale.set(0.12,0.075,0.05); w.position.x=sx*0.1; w.rotation.z=sx*0.35; bow.add(w); }
+  bow.add(outline(new THREE.Mesh(new THREE.SphereGeometry(0.045,10,8),pink),0.15));
+  pl.acc.lazo=bow;
+  pl.fist=outline(new THREE.Mesh(new THREE.SphereGeometry(0.15,12,10),toon(0xffd36b,{emissive:0x553300})),0.1);
+  pl.fist.visible=false; pl.body.add(pl.fist);
   pl.shadow=new THREE.Mesh(new THREE.CircleGeometry(0.62,24),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.45,depthWrite:false}));
   scene.add(pl.shadow);
 }
+function applyLook(){
+  pl.mat.color.setHex(SUITS[suitIdx]);
+  for(const k in pl.acc) pl.acc[k].visible = ACCS[accIdx]===k;
+  try{ localStorage.setItem('almaLunarLook',JSON.stringify({suitIdx,accIdx})); }catch(e){}
+}
+try{ const L=JSON.parse(localStorage.getItem('almaLunarLook')||'null'); if(L){ suitIdx=L.suitIdx%SUITS.length; accIdx=L.accIdx%ACCS.length; } }catch(e){}
+applyLook();
 
 const _mv=new V3(), _hv=new V3(), _t=new V3(), _t2=new V3(), _camR=new V3();
 function moveInput(out){
@@ -510,14 +615,14 @@ function makeEnemy(kind,planetIdx,dir){
     chargeDir:new V3(), wanderDir:new V3(), wanderT:0 });
   e.pos.copy(P.c).addScaledVector(dir,P.R+T.r+0.05); e.up.copy(dir); anyPerp(e.facing,dir); e.wanderDir.copy(e.facing);
   const g=new THREE.Group(); scene.add(g);
-  const mat=new THREE.MeshStandardMaterial({color:T.color, flatShading:true, roughness:.7, emissive:0x000000});
-  const body=new THREE.Mesh(new THREE.IcosahedronGeometry(T.r,1),mat); g.add(body);
+  const mat=toon(T.color,{flatShading:true, emissive:0x000000});
+  const body=outline(new THREE.Mesh(new THREE.IcosahedronGeometry(T.r,1),mat),0.07); g.add(body);
   for(const sx of [-1,1]){
     const eye=new THREE.Mesh(eyeGeo,eyeMat); eye.scale.setScalar(T.r*0.22); eye.position.set(sx*T.r*0.35,T.r*0.25,T.r*0.82); g.add(eye);
     const pup=new THREE.Mesh(eyeGeo,pupMat); pup.scale.setScalar(T.r*0.11); pup.position.set(sx*T.r*0.35,T.r*0.25,T.r*1.0); g.add(pup);
   }
   if(kind==='large') for(let i=0;i<5;i++){ // cresta de púas: "no me pises"
-    const sp=new THREE.Mesh(new THREE.ConeGeometry(0.28,0.8,6),new THREE.MeshStandardMaterial({color:0xdddddd,flatShading:true}));
+    const sp=new THREE.Mesh(new THREE.ConeGeometry(0.28,0.8,6),toon(0xeeeeee,{flatShading:true}));
     const a=(i-2)*0.32; sp.position.set(0,Math.cos(a)*T.r*0.95,Math.sin(a)*T.r*0.95); sp.rotation.x=a; g.add(sp);
   }
   const pips=new THREE.Group(); pips.position.y=T.r+0.45; g.add(pips);
@@ -659,7 +764,7 @@ function rayHit(origin,dir){
   }
   return hitS?{t:best,s:hitS}:null;
 }
-const _sp=new V3(), _sn=new V3();
+const _sp=new V3(), _sn=new V3(), _q=new THREE.Quaternion();
 let elapsed=0;
 function updateVisuals(dt){
   elapsed+=dt;
@@ -673,7 +778,17 @@ function updateVisuals(dt){
   if(p.state==='pound'){ sx=0.85; sy=1.25; sz=0.85; }
   pl.body.scale.set(sx,sy,sz);
   pl.fist.visible=p.state==='punch';
-  if(pl.fist.visible){ const k=Math.sin(Math.PI*clamp(p.t/CFG.punchTime,0,1)); pl.fist.position.set(0.15,0.2,0.4+k*0.85); }
+  if(pl.fist.visible){ const k=Math.sin(Math.PI*clamp(p.t/CFG.punchTime,0,1)); pl.fist.position.set(0.3,-0.12,0.35+k*0.75); }
+  // planetita que gira, ojos que parpadean (o se aprietan al recibir daño), lunita en órbita
+  pl.planet.rotation.y+=dt*0.6;
+  const blink=(elapsed%3.2)<0.12, hurt=p.hurtT>0;
+  pl.eyes.scale.y = hurt?0.25:(blink?0.1:1);
+  const ma=elapsed*1.8; pl.moon.position.set(Math.cos(ma)*0.35,Math.sin(ma)*0.12,Math.sin(ma)*0.35);
+  // bracitos que se balancean al caminar
+  const sp=Math.min(1,tangent(_sp,p.vel,p.up).length()/CFG.run), sw=Math.sin(elapsed*14)*0.5*sp*(p.grounded?1:0);
+  pl.arms[0].rotation.x=sw; pl.arms[1].rotation.x=-sw;
+  // el contorno del vidrio siempre mira a la cámara
+  pl.head.getWorldQuaternion(_q); _q.invert().multiply(camera.quaternion); pl.ring.quaternion.copy(_q);
   pl.group.visible = !(p.invul>0 && Math.floor(elapsed*16)%2===0);
   pl.mat.emissive.setHex(p.state==='pound'||p.state==='poundWind'?0x664400:0x000000);
   // sombra
@@ -754,6 +869,8 @@ document.getElementById('tGrav').onclick=e=>{ const opts=[0.5,1,1.5,2]; gravMul=
 document.getElementById('tTime').onclick=e=>{ const opts=[1,0.5,0.25]; timeScale=opts[(opts.indexOf(timeScale)+1)%opts.length]; e.target.textContent='⏱'+timeScale+'x'; };
 document.getElementById('tEnem').onclick=()=>spawnEnemies();
 document.getElementById('tCam').onclick=()=>{ input.recenter=true; };
+document.getElementById('tSuit').onclick=()=>{ suitIdx=(suitIdx+1)%SUITS.length; applyLook(); };
+document.getElementById('tAcc').onclick=()=>{ accIdx=(accIdx+1)%ACCS.length; applyLook(); };
 let lastAtkLabel='';
 function hud(dt){
   const lbl = player.grounded ? 'PUÑO' : 'PISOTÓN';

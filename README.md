@@ -20,6 +20,11 @@ Abrir `index.html` en el navegador. Usa Three.js desde CDN, así que no hay que 
 | Puño / pisotón (en el aire) | PUÑO | J |
 | Dash | DASH | K / Shift |
 
+## Estilo y personalización
+- Estilo cartoon liviano: sombras de tres tonos, contorno negro y planetas pintados.
+- Protagonista chibi: un planeta pequeño con ojitos dentro de un casco de vidrio.
+- 🎨 cambia el color del traje (5 colores) y 🎩 cambia el accesorio (sombrero de copa, lazo o ninguno). Se guarda en el dispositivo.
+
 ## Enemigos
 - **Chico:** 1 de vida, muere con cualquier ataque.
 - **Mediano:** 3 de vida.
