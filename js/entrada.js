@@ -79,7 +79,7 @@ bindBtn('bDash', () => { input.dashQ = CFG.buffer; });
 bindBtn('bSuper', () => { input.superHeld = true; }, () => { input.superHeld = false; });
 
 addEventListener('keydown', e => {
-  if (e.target && e.target.tagName === 'INPUT') return;   // escribiendo el nombre
+  if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;   // escribiendo (nombre, editor)
   keys.add(e.code);
   if (e.repeat) return;
   if (e.code === 'Space') { input.jumpQ = CFG.buffer; input.jumpHeld = true; e.preventDefault(); }

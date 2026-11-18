@@ -16,6 +16,7 @@ import { scene, toon, outline, planetGeo, faceNormal, orient, cartel, gradMap } 
 import { definirMundo, mundo, superficieEn, agregarMuro } from './fisica.js';
 import { juego } from './estado.js';
 import { iconoEnCanvas } from './iconos.js';
+import { paletaDe } from './niveles/formato.js';
 
 let grupo = null;          // todo lo del nivel cuelga de aquí, así se borra fácil
 export const piezas = {    // cosas del nivel que nivel.js necesita mover o mostrar
@@ -81,7 +82,9 @@ function base2(arriba) {
 /* ---- el mar: esfera translúcida con olitas ---- */
 const marUniforms = { uTiempo: { value: 0 } };
 function crearMar(P) {
-  const mat = new THREE.MeshToonMaterial({ color: P.colorMar || 0x5a8796, gradientMap: gradMap, transparent: true, opacity: 0.86 });
+  const lava = paletaDe(P).dano;                       // la lava brilla sola y casi no se ve a través
+  const mat = new THREE.MeshToonMaterial({ color: P.colorMar || 0x5a8796, gradientMap: gradMap, transparent: true, opacity: lava ? 0.95 : 0.86,
+    emissive: lava ? 0x8a2200 : 0x000000 });
   mat.onBeforeCompile = sh => {
     sh.uniforms.uTiempo = marUniforms.uTiempo;
     sh.vertexShader = 'uniform float uTiempo;\n' + sh.vertexShader.replace('#include <begin_vertex>',
@@ -95,22 +98,23 @@ function crearMar(P) {
   return m;
 }
 
-/* ---- isla: esfera de arena y pasto ---- */
+/* ---- isla o colina: esfera de arena y pasto (los colores dependen de la base del planeta) ---- */
 function crearIsla(s, P, seed) {
   const g = new THREE.IcosahedronGeometry(s.R, Math.min(20, Math.max(6, Math.round(s.R * 1.6))));
   const pos = g.attributes.position, n = new V3(), w = new V3(), cols = new Float32Array(pos.count * 3), c = new THREE.Color();
-  const arena = new THREE.Color(0xd8cca8), pasto = new THREE.Color(0x7fae6e), roca = new THREE.Color(0x77736e);
+  const pal = paletaDe(P);
+  const arena = new THREE.Color(pal.orilla), pasto = new THREE.Color(pal.cima), roca = new THREE.Color(pal.fondo);
   const r = rng(seed);
   for (let i = 0; i < pos.count; i++) {
     n.fromBufferAttribute(pos, i).normalize();
     w.copy(n).multiplyScalar(s.R).add(s.c);                     // punto en el mundo
-    const sobreMar = w.distanceTo(P.c) - P.mar;                 // altura sobre el agua
+    const sobreMar = w.distanceTo(P.c) - nivelBase(P);          // altura sobre el agua (o sobre el suelo)
     if (sobreMar > 0.45) c.copy(pasto); else if (sobreMar > -0.3) c.copy(arena); else c.copy(roca);
     c.multiplyScalar(0.9 + r() * 0.14);
     cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
   }
   g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-  const m = new THREE.Mesh(g, toon(0xffffff, { map: null, vertexColors: true, flatShading: false }));
+  const m = new THREE.Mesh(g, toon(0xffffff, { map: null, vertexColors: true, flatShading: !!pal.plano }));
   m.position.copy(s.c);
   return m;
 }
@@ -253,7 +257,7 @@ export function construirMundo(def) {
 
   // 2) planetas, mar, islas y rocas → dibujo
   for (const P of mundo.planetas) {
-    const m = new THREE.Mesh(planetGeo(P.R, P.color, P.seed || 11 + P.R * 7), toon(0xffffff, { map: null, vertexColors: true }));
+    const m = new THREE.Mesh(planetGeo(P.R, P.color, P.seed || 11 + P.R * 7), toon(0xffffff, { map: null, vertexColors: true, flatShading: !!(P.base && paletaDe(P).plano) }));
     outline(m, 0.012); m.position.copy(P.c); grupo.add(m);
     if (P.mar) grupo.add(crearMar(P));
   }

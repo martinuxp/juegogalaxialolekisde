@@ -55,7 +55,7 @@ escuchar('nivel', def => {
   $('tGrav').querySelector('.val').textContent = 'g×1.0';
   mostrarNombre();
   // si viene la cinemática, el título se muestra cuando termina (main.js)
-  setTimeout(() => { if (!def.laboratorio && juego.modo === 'juego') tituloNivel(); }, 0);
+  setTimeout(() => { if (!def.laboratorio && !def.editor && juego.modo === 'juego') tituloNivel(); }, 0);
 });
 
 export function tituloNivel() {
