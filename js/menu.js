@@ -109,6 +109,7 @@ $('pListo').onclick = () => {
 
 /* ---------- nivel completo ---------- */
 escuchar('completo', ({ def, tiempo }) => {
+  if (def.editor) return;                  // probando un nivel del editor: lo maneja js/editor/editor.js
   setTimeout(() => {
     const sig = NIVELES[def.numero];        // el siguiente (los números parten en 1)
     const m = Math.floor(tiempo / 60), s = Math.floor(tiempo % 60).toString().padStart(2, '0');

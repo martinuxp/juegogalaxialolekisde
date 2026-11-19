@@ -272,6 +272,8 @@ export function stepPlayer(dt) {
   if (P && P.mar) {
     const r = p.pos.distanceTo(P.c);
     if (r < P.mar + 0.05) {
+      const lava = P.base === 'lava';                  // la lava además quita un corazón
+      if (lava) { p.invul = 0; hurtPlayer(1, p.up); }
       p.pos.copy(p.seguro); p.vel.set(0, 0, 0); p.state = 'normal'; p.invul = Math.max(p.invul, 0.8);
       emitir('agua');
     } else if (p.grounded && r > P.mar + p.r + 0.15) p.seguro.copy(p.pos);
