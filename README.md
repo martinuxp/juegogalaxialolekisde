@@ -30,15 +30,33 @@ En el nivel 1 cada tramo se pasa con una mecánica: saltos de 6 m, huecos de 14,
 
 Simplificaciones: en cada punto manda solo el planeta que más atrae; sin aire ni roce; el impulso del cañón es instantáneo.
 
+## Editor de planetas
+
+En el menú, **Editor de planetas** (o `index.html?editor`). Está pensado para PC, con mouse y teclado.
+
+- **Paleta (abajo):** seleccionar/mover, borrar, terreno, roca, enemigo, cartel, botón, muros, cañón, inicio, flores, fragmento y **Nota**.
+- **Terreno:** clic levanta una colina (o isla, si el planeta es de agua). Mantener apretado la sigue subiendo, Shift+clic la baja y arrastrar pinta una cordillera. Las colinas son esferas, las mismas que usa `fisica.js` para chocar.
+- **Planetas (derecha):** base (tierra, agua, roca, arena, hielo o lava), color, radio R, gravedad g, posición y si es la meta. El panel muestra `G·M = g·R²`, `v_esc = √(2·G·M/r)` y el salto máximo `h = v²/2g`. Al poner una colina o un muro dice si se alcanza saltando.
+- **Nota:** un bloque rosado que todavía no existe. Escribes qué quieres ("un trampolín que te lance el doble de alto") y Claude lo convierte en un bloque real.
+- **Abajo** se ve la altura y la gravedad bajo el mouse, y la distancia hasta lo seleccionado, para medir los huecos.
+- **Probar** (P) usa la física real; Shift+P parte desde donde está el mouse. Esc vuelve al editor.
+- **Exportar** descarga `nombre-del-nivel.json`; **Copiar** lo deja en el portapapeles para pegarlo en el chat. También se puede abrir un `.json` (o arrastrarlo a la ventana), y abrir una copia de Columba o del Laboratorio.
+- Teclas: 1…0 herramientas, N nota, Supr borrar, Ctrl+Z / Ctrl+Y, F mirar lo seleccionado; clic derecho y arrastrar gira la cámara, la rueda hace zoom.
+
+El formato del archivo está explicado en `js/niveles/formato.js`. Un nivel exportado se deja en el juego con
+`export default nivelDesdeEditor({ ...el json... })`, porque un JSON también es JavaScript válido.
+
 ## Pruebas de física
 
 ```
 node pruebas/fisica.test.mjs
+node pruebas/formato.test.mjs
 ```
 
 Revisa que `g` baje con `1/r²`, que `v_esc` sea correcta, que con 95 % de `v_esc` vuelvas a caer y con 105 % no,
 que la altura máxima coincida con la conservación de la energía, que el cañón del nivel 1 llegue a Ícaro y que la órbita del ovni
 mantenga su radio y tenga el período `T = 2πr/v`.
+`formato.test.mjs` revisa que Columba pase por el editor (ida y vuelta por JSON) sin moverse más de un centímetro.
 
 ## Controles
 
@@ -70,4 +88,6 @@ mantenga su radio y tenga el período `T = 2πr/v`.
 | `js/despertar.js` | Diálogo inicial y cinemática del despertar |
 | `js/camara.js`, `js/entrada.js`, `js/ui.js` | Cámara, controles y HUD |
 | `js/dialogo.js` | Caja de diálogo de los carteles (pausa el juego) |
+| `js/editor/editor.js`, `js/editor/editor.css` | Editor de planetas (modo debug) |
+| `js/niveles/formato.js` | Formato `nivel.json` del editor y bases de planeta (tierra, agua, roca, arena, hielo, lava) |
 | `js/iconos.js` | Íconos SVG (Iconoir, MIT, y algunos propios); el juego no usa emojis |

@@ -8,6 +8,7 @@
      'juego'    → jugando
      'cartel'   → leyendo un cartel (el juego queda en pausa)
      'completo' → pantalla de nivel completo
+     'editor'   → editor de planetas (js/editor/editor.js)
 
    La física avanza a PASO FIJO de 1/120 s: si el celular va
    a 30 FPS, hacemos 4 pasos por cuadro; si va a 60, hacemos 2.
@@ -33,6 +34,7 @@ import { limpiarEntrada, input } from './entrada.js';
 import { pintarIconos } from './iconos.js';
 import './dialogo.js';
 import { NIVELES, LABORATORIO } from './niveles/index.js';
+import { abrirEditor, frameEditor, conectarEditor, volverAlEditor, ed } from './editor/editor.js';
 
 window.__gameStarted = true;
 const $ = id => document.getElementById(id);
@@ -90,7 +92,10 @@ function jugar() {
   else empezarNivel(0, true);
 }
 
-$('tMenu').onclick = () => irAlMenu();
+$('tMenu').onclick = () => ed.probando ? volverAlEditor() : irAlMenu();   // probando un nivel del editor: vuelve al editor
+function editor() { mostrarMenu(false); jugadorALaPlaya(false); abrirEditor(); }
+$('mEditor').onclick = editor;
+conectarEditor(irAlMenu);
 $('saltarCine').onclick = () => saltarDespertar();
 addEventListener('keydown', e => { if (juego.modo === 'cine' && (e.code === 'Escape' || e.code === 'Enter')) saltarDespertar(); });
 
@@ -135,6 +140,7 @@ function frame(now) {
     return;
   }
   if (juego.modo === 'dialogo') { renderer.clear(); return; }
+  if (juego.modo === 'editor') { frameEditor(dt, tiempo); renderer.render(scene, camera); return; }
 
   const jugando = juego.modo === 'juego' && !vertical.matches;   // en vertical el juego espera
   if (jugando) {
@@ -160,6 +166,7 @@ function frame(now) {
 /* ---------- arranque ---------- */
 pintarIconos();
 irAlMenu();
+if (new URLSearchParams(location.search).has('editor')) editor();   // index.html?editor abre directo el editor
 requestAnimationFrame(frame);
 
 // gancho para pruebas automáticas (Playwright): permite avanzar la física a mano
@@ -170,4 +177,5 @@ window.__game = {
   laboratorio: () => { mostrarMenu(false); jugadorALaPlaya(false); cargarNivel(LABORATORIO); juego.modo = 'juego'; mostrarHUD(true); },
   menu: irAlMenu,
   columba: _depurar,
+  editor: ed, abrirEditor: editor,
 };
