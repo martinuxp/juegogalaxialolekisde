@@ -9,6 +9,9 @@
    CARTELES: si estás cerca de uno, juego.cartelCerca lo dice
    (el botón de ataque pasa a ser LEER).
    BOTÓN + MUROS: un pisotón sobre el botón baja los muros.
+   JEFE: al ganarle (jefe.js) se apaga el campo de fuerza
+   del cañón, que usa el mismo código de los muros.
+   OVNI: si el nivel tiene def.ovni, aparece en órbita (ovni.js).
    ========================================================= */
 import { juego, ajustes, guardarAjustes, emitir, escuchar } from './estado.js';
 import { CFG, DIFICULTADES } from './config.js';
@@ -19,6 +22,8 @@ import { player, respawnPlayer, mostrarLunita } from './jugador.js';
 import { camaraAlInicio, cam } from './camara.js';
 import { limpiarEscape } from './mecanicas/escape.js';
 import { limpiarEntrada } from './entrada.js';
+import { crearOvniNivel, limpiarOvni } from './ovni.js';
+import { prepararJefe } from './jefe.js';
 
 export const progreso = { paso: 'jugar', tiempo: 0, avisoCanon: false, murosT: -1 };
 
@@ -27,6 +32,8 @@ export function cargarNivel(def) {
   mundo.gravMul = 1;
   construirMundo(def);
   spawnEnemies(def.enemigos || []);
+  if (def.ovni) crearOvniNivel(def.ovni); else limpiarOvni();
+  prepararJefe(def);
 
   player.maxHP = def.laboratorio ? CFG.maxHP : DIFICULTADES[ajustes.dificultad].corazones;
   player.tieneSuper = !!def.superDesdeInicio;
@@ -112,6 +119,11 @@ escuchar('pisoton', pos => {
   progreso.murosT = 0;                            // empiezan a bajar los muros
   cam.shake = 0.6;
   emitir('boton');
+});
+
+// le ganaste al jefe: el campo de fuerza del cañón se apaga (baja igual que los muros)
+escuchar('jefeVencido', () => {
+  if (progreso.murosT < 0) progreso.murosT = 0;
 });
 
 // ¿aterrizó en el planeta de la meta?

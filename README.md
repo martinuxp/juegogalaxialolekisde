@@ -23,8 +23,10 @@ Hay dos formas:
 |---|---|---|
 | Gravitación de Newton | `g = G·M / r² = g0·(R/r)²` | Todo: caminar, saltar, caer en cada planeta |
 | Velocidad de escape | `v_esc = √(2·G·M / r)` | Cañón de Columba (y SÚPER en el Laboratorio): barra con la marca de `v_esc` y línea que predice el vuelo |
+| Órbita circular | `v = √(G·M / r)`, `T = 2πr / v` | El ovni de Ícaro da vueltas a Columba (r = 70 m, v ≈ 25 m/s, T ≈ 17,6 s) movido por `pasoNewton` |
+| Tiro parabólico | `t = 2·v_y / g` | El jefe alien calcula su salto para caer donde estás |
 
-En el nivel 1 cada tramo se pasa con una mecánica: saltos de 6 m, huecos de 14,5 m que piden salto + dash (un salto llega a ~12,9 m, medido) y muros de 5,5 m (el salto sube ~3,9 m = v²/2g) que se bajan con un pisotón sobre el botón.
+En el nivel 1 cada tramo se pasa con una mecánica: saltos de 6 m, huecos de 14,5 m que piden salto + dash (un salto llega a ~12,9 m, medido) y la Isla de la Arena (mini jefe: aliens que baja el ovni y un jefe al que solo le hace daño el pisotón cuando queda mareado) y un campo de fuerza de 5,5 m alrededor del cañón (el salto sube ~3,9 m = v²/2g) que se apaga al ganarle al jefe.
 
 Simplificaciones: en cada punto manda solo el planeta que más atrae; sin aire ni roce; el impulso del cañón es instantáneo.
 
@@ -35,7 +37,8 @@ node pruebas/fisica.test.mjs
 ```
 
 Revisa que `g` baje con `1/r²`, que `v_esc` sea correcta, que con 95 % de `v_esc` vuelvas a caer y con 105 % no,
-que la altura máxima coincida con la conservación de la energía y que el cañón del nivel 1 llegue a Ícaro.
+que la altura máxima coincida con la conservación de la energía, que el cañón del nivel 1 llegue a Ícaro y que la órbita del ovni
+mantenga su radio y tenga el período `T = 2πr/v`.
 
 ## Controles
 
@@ -59,6 +62,8 @@ que la altura máxima coincida con la conservación de la energía y que el cañ
 | `js/jugador.js` | Estados y malla del protagonista |
 | `js/enemigos.js`, `js/combate.js`, `js/efectos.js` | Enemigos, contacto y onda del pisotón |
 | `js/mecanicas/escape.js` | Carga del cañón/supersalto, barra y línea de trayectoria |
+| `js/aliens.js`, `js/ovni.js`, `js/jefe.js` | Gatos-alien y ovni (dibujo), órbita del ovni y pelea del jefe |
+| `js/vegetacion.js` | Pasto, flores, matas, árboles y nenúfares (InstancedMesh, no chocan) |
 | `js/mundo.js`, `js/nivel.js` | Construir el nivel (islas, mar, cañón) y sus reglas |
 | `js/niveles/*.js` | Un archivo por nivel (datos que se pueden afinar) |
 | `js/columba3d.js`, `js/menu.js` | Playa del menú (con la marea) y personalización |

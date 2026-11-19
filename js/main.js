@@ -22,6 +22,8 @@ import { stepFx } from './efectos.js';
 import { updateCamera, cam } from './camara.js';
 import { animarMundo, piezas } from './mundo.js';
 import { cargarNivel, stepNivel } from './nivel.js';
+import { stepOvni, animarOvni, ovni } from './ovni.js';
+import { stepJefe, pelea } from './jefe.js';
 import { actualizarEscape } from './mecanicas/escape.js';
 import { actualizarHUD, mostrarHUD, toast, tituloNivel } from './ui.js';
 import { mostrarMenu, conectarMenu, abrirPersonaje, jugadorALaPlaya, animarJugadorMenu } from './menu.js';
@@ -109,11 +111,15 @@ addEventListener('pointerdown', async () => {
 const DT = 1 / 120;
 let last = performance.now(), acc = 0, tiempo = 0;
 
+let tFisica = 0;
 function step(dt) {
+  tFisica += dt;
   stepPlayer(dt);
   stepEnemies(dt);
   stepContacts();
   stepNivel(dt);
+  stepOvni(dt, tFisica);
+  stepJefe(dt);
 }
 
 function frame(now) {
@@ -143,6 +149,7 @@ function frame(now) {
   updateEnemyVisuals(tiempo);
   stepFx(jugando ? dtv : 0);
   animarMundo(dt, tiempo);
+  animarOvni(jugando ? dtv : 0, tiempo);
   actualizarEscape(dt);
 
   if (!actualizarDespertar(vertical.matches ? 0 : dt)) updateCamera(dt);
@@ -157,7 +164,7 @@ requestAnimationFrame(frame);
 
 // gancho para pruebas automáticas (Playwright): permite avanzar la física a mano
 window.__game = {
-  juego, player, step, ajustes, input, cam, piezas,
+  juego, player, step, ajustes, input, cam, piezas, ovni, pelea,
   enemies: () => juego.enemigos,
   jugarNivel: i => { limpiarEntrada(); empezarNivel(i); },
   laboratorio: () => { mostrarMenu(false); jugadorALaPlaya(false); cargarNivel(LABORATORIO); juego.modo = 'juego'; mostrarHUD(true); },

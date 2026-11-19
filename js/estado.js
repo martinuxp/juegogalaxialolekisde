@@ -10,6 +10,7 @@ export const juego = {
   jugador: null,       // lo crea jugador.js
   enemigos: [],        // lo llena enemigos.js
   nivel: null,         // definición del nivel actual (js/niveles/...)
+  checkpoint: null,    // { planeta, dir, mirar }: si pierdes, vuelves aquí y no al inicio (lo pone jefe.js)
   debug: false,        // panel de depuración (tecla G o botón DEBUG)
   timeScale: 1,        // cámara lenta del laboratorio
 };

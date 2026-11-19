@@ -26,7 +26,7 @@ export function shockwave(point, up, direct) {
   m.position.copy(point).addScaledVector(up, 0.1); faceNormal(m, up); scene.add(m);
   fx.push({ m, t: 0, dur: 0.35 });
   for (const e of juego.enemigos) {
-    if (e.dead || e === direct) continue;
+    if (e.dead || e === direct || e.T.jefe) continue;          // al jefe la onda no le hace nada (casco)
     if (e.pos.distanceTo(point) < CFG.shockR + e.r) {
       tangent(_t, _t2.copy(e.pos).sub(point), e.up);
       if (_t.lengthSq() > 1e-6) _t.normalize();

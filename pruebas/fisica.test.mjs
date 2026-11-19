@@ -4,7 +4,7 @@
    Revisan que el juego cumpla las fórmulas, sin abrir el navegador.
    Si algo falla, el programa lo dice y termina con error.
    ========================================================= */
-import { mundo, definirMundo, gravedadEn, velocidadEscape, simularTrayectoria, GM, agregarMuro, collide, makeBody } from '../js/fisica.js';
+import { mundo, definirMundo, gravedadEn, velocidadEscape, simularTrayectoria, GM, agregarMuro, collide, makeBody, pasoNewton } from '../js/fisica.js';
 import { V3 } from '../js/util.js';
 
 let fallas = 0;
@@ -86,6 +86,28 @@ const { default: nivel1 } = await import('../js/niveles/nivel1-columba.js');
   b.pos.set(0, 6.4, 0); b.vel.set(0, -5, 0);             // cae encima del muro
   collide(b);
   revisar('encima del muro se puede parar', b.grounded && cerca(b.pos.y, 6.6, 1e-9), `y = ${b.pos.y.toFixed(3)}`);
+}
+
+/* ---- 6. Órbita circular del ovni: v = √(G·M/r), T = 2πr/v ---- */
+{
+  const [C] = nivel1.planetas;
+  definirMundo([C], []);
+  const r = nivel1.ovni.radio;
+  const v = Math.sqrt(GM(C) / r);
+  const T = 2 * Math.PI * r / v;
+  // lo mismo que hace js/ovni.js: posición en x, velocidad en z (perpendicular)
+  const pos = new V3(r, 0, 0), vel = new V3(0, 0, v);
+  let rMin = Infinity, rMax = 0, vueltaT = null, antes = pos.z;
+  const dt = 1 / 120;
+  for (let i = 1; i <= Math.round(1.5 * T / dt); i++) {
+    pasoNewton(pos, vel, dt);
+    const rr = pos.length(); rMin = Math.min(rMin, rr); rMax = Math.max(rMax, rr);
+    if (vueltaT === null && i * dt > T / 2 && antes < 0 && pos.z >= 0) vueltaT = i * dt;   // volvió a cruzar el eje x
+    antes = pos.z;
+  }
+  revisar('el ovni mantiene su radio de órbita (±0,5%)', rMax - rMin < r * 0.005, `r entre ${rMin.toFixed(2)} y ${rMax.toFixed(2)} m`);
+  revisar('el período simulado coincide con T = 2πr/v (±1%)', vueltaT !== null && cerca(vueltaT, T, T * 0.01),
+    `simulado ${vueltaT && vueltaT.toFixed(2)} s · teoría ${T.toFixed(2)} s · v = ${v.toFixed(1)} m/s`);
 }
 
 console.log(fallas ? `\n${fallas} prueba(s) fallaron` : '\nTodas las pruebas pasaron');

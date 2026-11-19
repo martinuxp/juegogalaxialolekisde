@@ -31,7 +31,8 @@ Proyecto escolar de Física (2° medio, Liceo Camilo Henríquez, Temuco; profeso
 Módulos ES sin bundler. Three.js 0.170.0 copiado en `js/vendor/three/` (importmap en `index.html`). **No abre con doble clic**: hay que servirlo (GitHub Pages o `python -m http.server`). Mobile first, con joystick táctil, botones y teclado. Ver la tabla de archivos en `README.md`.
 - **Física (`js/fisica.js`, sin DOM):** `g = g0·(R/r)²`, manda el planeta con más `g`, colisiones esféricas (planetas, islas y rocas), `superficieEn()` para poner cosas en el suelo, `pasoNewton` + `simularTrayectoria` para vuelos. Pruebas: `node pruebas/fisica.test.mjs`.
 - **Jugador:** paso fijo 1/120 s, coyote time, buffer, salto variable, dash que sigue la curvatura, puño/pisotón, estados `carga`/`vuelo` (escape.js), `dormido` (cinemática), mar no sólido (vuelve a `seguro`).
-- **Niveles:** datos en `js/niveles/*.js` (planetas con `mar`, `islas` (con `ancho` sobre el mar), `rocas`, `canon`, `muros`, `boton`, `flores`, `carteles` con `paginas`, `enemigos`, `meta`). Nivel 1 Columba (R 40, mar 42) es un tutorial por tramos: salto → dash → pisotón (botón baja muros) → cañón; los huecos están medidos con la física real. El resto de niveles falta.
+- **Niveles:** datos en `js/niveles/*.js` (planetas con `mar`, `islas` (con `ancho` sobre el mar), `rocas`, `canon`, `muros`, `boton`, `flores`, `carteles` con `paginas`, `enemigos`, `meta`). Nivel 1 Columba (R 40, mar 42) es un tutorial por tramos: salto → aliens (puño) → dash → Isla de la Arena (mini jefe, enseña el pisotón) → cañón tapado por un campo de fuerza que se apaga al ganar; los huecos están medidos con la física real. Islas con `veg` (vegetacion.js, decorativa).
+- **Ovni y jefe:** `js/ovni.js` (órbita circular real con `pasoNewton`, `v = √(GM/r)`; viajes con Bézier = animación), `js/jefe.js` (fases de la pelea + cerebro del jefe vía `ETYPES.jefe.ia`; checkpoint `juego.checkpoint` en la entrada de la arena), `js/aliens.js` (gatos-alien verdes con antenas, inspirados en la foto que mandó Martín). El botón de pisotón sigue en el motor pero ya no está en el nivel 1. El resto de niveles falta.
 - **Carteles:** postes en el mundo; cerca, el botón de ataque pasa a LEER y se abre la caja de diálogo (`js/dialogo.js`, modo `cartel` pausa el juego). Nada de textos flotantes ni banner de objetivo en el nivel 1.
 - **UI:** sin emojis ni texto en botones; íconos SVG de `js/iconos.js` (Iconoir MIT + propios).
 - **Física extra:** `mundo.muros` = cajas orientadas (choque esfera–caja); `superficieEn` solo cuenta el planeta y sus propias islas. Laboratorio = mapa debug antiguo con anillos Bézier (no son física).
@@ -41,7 +42,7 @@ Módulos ES sin bundler. Three.js 0.170.0 copiado en `js/vendor/three/` (importm
 - **Gancho de pruebas:** `window.__game` expone juego, player, step, ajustes, enemies(), jugarNivel(i), laboratorio(), menu(), columba.
 - **Pendiente:**
   - La lunita del casco aparece al tomar un fragmento (los fragmentos parten en Ícaro).
-  - Los enemigos se parecen al protagonista. La tribu de Aestus necesita otra silueta.
+  - Los enemigos del Laboratorio se parecen al protagonista; los aliens de Ícaro ya son gatos verdes. Falta decidir si la tribu de Aestus son estos mismos aliens.
   - Falta probar el salto y la cámara en un celular real.
 
 El plan completo está en el doc «Alma Lunar · Plan del proyecto» (Claude Docs).

@@ -45,7 +45,7 @@ export function toast(html, ms = 2600) {
 escuchar('fragmento', () => toast(`<span class="tIco">${icono('luna')}</span>Fragmento del alma lunar<small>Desbloqueaste el SÚPER SALTO</small>`, 3400));
 escuchar('reaparecer', motivo => {
   if (motivo === 'vacio') toast('Te perdiste en el espacio…<small>La gravedad era casi cero: nada te atrajo de vuelta</small>', 3200);
-  else toast('Sin corazones…<small>Vuelves al inicio del nivel</small>');
+  else toast(juego.checkpoint ? 'Sin corazones…<small>Vuelves a la entrada de la arena</small>' : 'Sin corazones…<small>Vuelves al inicio del nivel</small>');
 });
 escuchar('despegue', ({ v, vesc }) => {
   if (v >= vesc) toast(`¡${v.toFixed(1)} m/s ≥ v<sub>esc</sub>!<small>Con esa velocidad no vuelves nunca a este planeta</small>`, 2400);
@@ -56,6 +56,20 @@ escuchar('nivel', def => {
   mostrarNombre();
   // si viene la cinemática, el título se muestra cuando termina (main.js)
   setTimeout(() => { if (!def.laboratorio && juego.modo === 'juego') tituloNivel(); }, 0);
+});
+
+/* ---------- vida del jefe: aparece solo durante la pelea (jefe.js) ---------- */
+let jefeHP = -1;
+escuchar('jefe', info => {
+  const el = $('jefeBarra');
+  el.classList.toggle('oculto', !info);
+  if (!info) { jefeHP = -1; return; }
+  if (!$('jefeIco').innerHTML) $('jefeIco').innerHTML = icono('alien', 1.8);
+  jefeHP = info.hp;
+  let s = '';
+  for (let i = 0; i < info.max; i++) s += `<span class="${i < info.hp ? '' : 'off'}"></span>`;
+  $('jefeVida').innerHTML = s;
+  el.classList.remove('golpe'); void el.offsetWidth; el.classList.add('golpe');
 });
 
 export function tituloNivel() {
