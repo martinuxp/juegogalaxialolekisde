@@ -14,6 +14,7 @@ export const CFG = {
   dashSpeed: 24, dashTime: 0.17, dashCD: 0.5, dashKeep: 0.5,
   // pisotón
   poundWind: 0.2, poundSpeed: 40, poundLand: 0.22, shockR: 4.5,
+  poundAltMin: 1.0,   // PC: si vas cayendo a menos de 1 m del suelo, Espacio es un salto guardado, no pisotón
   // puño
   punchTime: 0.28, punchFrom: 0.05, punchTo: 0.18, punchReach: 1.15, punchR: 1.0,
   // rebote al pisar enemigos

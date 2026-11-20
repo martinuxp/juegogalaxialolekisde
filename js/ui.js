@@ -159,7 +159,8 @@ export function actualizarHUD(dt) {
   // el botón de ataque cambia: LEER junto a un cartel, PUÑO en el suelo, PISOTÓN en el aire
   const ic = juego.cartelCerca ? 'leer' : p.grounded ? 'puno' : 'pisoton';
   if (ic !== iconoAtk) {
-    $('bAtk').innerHTML = icono(ic, 2); iconoAtk = ic;
+    // junto a un cartel, en PC aparece una teclita E en la esquina (body.pc, ver entrada.js)
+    $('bAtk').innerHTML = icono(ic, 2) + (ic === 'leer' ? `<span class="tecla">${icono('teclaE', 2.2)}</span>` : ''); iconoAtk = ic;
     $('bAtk').classList.toggle('leer', ic === 'leer');
   }
   actualizarBotonSuper();

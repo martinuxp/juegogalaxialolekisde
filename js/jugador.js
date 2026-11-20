@@ -144,7 +144,7 @@ export function mostrarLunita(v) { pl.moon.visible = v; }
 /* ---------------------------------------------------------
    MOVIMIENTO
    --------------------------------------------------------- */
-const _mv = new V3(), _hv = new V3(), _t = new V3(), _t2 = new V3(), _camR = new V3();
+const _mv = new V3(), _hv = new V3(), _t = new V3(), _t2 = new V3(), _camR = new V3(), _alt = new V3();
 
 /** Convierte el joystick/teclado en una dirección sobre el planeta, relativa a la cámara. */
 function moveInput(out) {
@@ -159,6 +159,14 @@ function moveInput(out) {
   out.normalize();
   _camR.crossVectors(out, player.up);   // derecha de la cámara
   return out.multiplyScalar(iy).addScaledVector(_camR, ix);
+}
+
+/** Cuánto hay entre los pies y el suelo del planeta (o isla/roca) justo debajo, en metros. */
+function alturaAlSuelo(p) {
+  if (!p.planet) return Infinity;
+  _alt.subVectors(p.pos, p.planet.c);
+  const r = _alt.length(); _alt.divideScalar(r);
+  return r - superficieEn(p.planet, _alt) - p.r;
 }
 
 /** Pone al jugador en el punto de inicio del nivel, con la vida llena. */
@@ -180,6 +188,7 @@ export function stepPlayer(dt) {
   const p = player;
   p.dashCD -= dt; p.invul -= dt; p.launchCD -= dt; p.hurtT -= dt;
   input.jumpQ -= dt; input.atkQ -= dt; input.dashQ -= dt;
+  input.punoQ -= dt; input.poundQ -= dt; input.leerQ -= dt;
   computeGravity(p);
   if (p.state === 'dormido') return;                 // cinemática del despertar
   if (p.state === 'launch') { stepLaunch(dt); return; }
@@ -198,10 +207,25 @@ export function stepPlayer(dt) {
     if (p.tieneSuper) { empezarCarga(p, null); return; }
   }
 
-  // LEER: junto a un cartel, el botón de ataque abre el diálogo (nivel.js decide si hay uno cerca)
-  if (input.atkQ > 0 && juego.cartelCerca && p.grounded && p.state === 'normal') {
-    input.atkQ = 0;
+  // LEER: junto a un cartel, el botón de ataque (celular) o la E (PC) abre el diálogo
+  // (nivel.js decide si hay uno cerca)
+  if ((input.atkQ > 0 || input.leerQ > 0) && juego.cartelCerca && p.grounded && p.state === 'normal') {
+    input.atkQ = 0; input.leerQ = 0;
     emitir('leer', juego.cartelCerca);
+  }
+  // PUÑO del PC (clic o F): solo en el suelo; en el aire no hace nada
+  if (input.punoQ > 0 && p.grounded && (p.state === 'normal' || p.state === 'dash')) {
+    input.punoQ = 0; p.state = 'punch'; p.t = 0; p.punchHit.clear();
+  }
+  // PISOTÓN del PC: Espacio estando en el aire ("doble espacio")
+  if (input.poundQ > 0) {
+    if (p.grounded || p.coyote > 0) input.poundQ = 0;          // en el suelo (o recién salido del borde) ese Espacio es un salto
+    else if ((p.state === 'normal' || p.state === 'dash') && !(vy < 0 && alturaAlSuelo(p) < CFG.poundAltMin)) {
+      input.poundQ = 0; input.jumpQ = 0;                        // gastamos el Espacio: no queremos que salte al aterrizar
+      p.state = 'poundWind'; p.t = 0;
+    }
+    // si vas cayendo y estás a menos de poundAltMin del suelo, no pisoteas:
+    // ese Espacio queda guardado como salto (buffer) para cuando aterrices
   }
   // ATAQUE: en el suelo = puño; en el aire = pisotón
   if (input.atkQ > 0 && (p.state === 'normal' || p.state === 'dash')) {

@@ -9,7 +9,7 @@
    ========================================================= */
 import { V3, clamp, damp, tangent, anyPerp } from './util.js';
 import { camera } from './escena.js';
-import { input, keys } from './entrada.js';
+import { input } from './entrada.js';
 import { juego } from './estado.js';
 
 export const cam = {
@@ -26,8 +26,7 @@ export function updateCamera(dt) {
   tangent(cam.fwd, cam.fwd, cam.up);
   if (cam.fwd.lengthSq() < 1e-6) anyPerp(cam.fwd, cam.up);
   cam.fwd.normalize();
-  const keyYaw = (keys.has('KeyE') ? 1 : 0) - (keys.has('KeyQ') ? 1 : 0);
-  const yaw = input.camDX * 0.007 + keyYaw * 2.4 * dt; input.camDX = 0;
+  const yaw = input.camDX * 0.007; input.camDX = 0;   // dedo o mouse arrastrando (entrada.js)
   if (yaw) cam.fwd.applyAxisAngle(cam.up, -yaw);
   cam.pitch = clamp(cam.pitch + input.camDY * 0.004, 0.08, 1.25); input.camDY = 0;
   if (input.recenter) { cam.fwd.copy(p.facing); input.recenter = false; }

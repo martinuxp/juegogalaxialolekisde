@@ -3,7 +3,16 @@
    ---------------------------------------------------------
    Celular: mitad izquierda = joystick; arrastrar en la derecha
    = girar la cámara; botones SALTO, PUÑO, DASH y SÚPER.
-   Teclado: WASD/flechas, Espacio, J, K/Shift, L (súper), Q/E, R.
+   PC:
+     WASD / flechas   moverse
+     mouse (clic izq. y arrastrar)   girar la cámara
+     clic sin arrastrar o F          puño
+     Espacio          salto
+     Espacio en el aire              pisotón (doble espacio)
+     E                leer un cartel
+     Shift / K        dash
+     L / C            súper (mantener)
+     Tab              centrar la cámara
 
    Los botones no hacen la acción directo: dejan un "pedido"
    (jumpQ, atkQ, dashQ) que dura unos milisegundos. Así, si
@@ -15,18 +24,51 @@ import { CFG } from './config.js';
 export const input = {
   jx: 0, jy: 0,                 // joystick (-1 a 1)
   jumpHeld: false, jumpQ: 0,
-  atkQ: 0, dashQ: 0,
+  atkQ: 0, dashQ: 0,            // botón de ataque del celular: LEER / PUÑO / PISOTÓN según el caso
+  punoQ: 0, poundQ: 0, leerQ: 0, // PC: cada acción tiene su propia tecla
   superHeld: false,             // botón SÚPER apretado
   camDX: 0, camDY: 0, recenter: false,
 };
 export const keys = new Set();
 export const atajos = { debug: null };   // main.js pone aquí qué hacer con la tecla G
 
+/* ¿Estás jugando con teclado y mouse (PC) o con el dedo?
+   Cambia con lo último que usaste. Sirve para que los carteles
+   digan "Espacio" o "SALTO" según corresponda. */
+export const control = { pc: matchMedia('(pointer: fine)').matches };
+function usarPC(v) {
+  if (control.pc === v) return;
+  control.pc = v;
+  document.body.classList.toggle('pc', v);
+}
+document.body.classList.toggle('pc', control.pc);
+addEventListener('pointerdown', e => usarPC(e.pointerType === 'mouse'), true);
+
+/* Textos con controles: en los carteles se escribe {salto}, {puno}...
+   y aquí se cambia por el nombre del botón o de la tecla. */
+const NOMBRES = {
+  //            celular            PC
+  mover:   ['el joystick',       'WASD'],
+  camara:  ['arrastra a la derecha', 'mantén el clic izquierdo y mueve el mouse'],
+  salto:   ['SALTO',             'Espacio'],
+  puno:    ['PUÑO',              'el clic o F'],
+  dash:    ['DASH',              'Shift'],
+  pisoton: ['PISOTÓN',           'Espacio otra vez'],
+  leer:    ['LEER',              'E'],
+  super:   ['SÚPER',             'L'],
+};
+export function conControles(txt) {
+  return txt.replace(/\{(\w+)\}/g, (m, k) => NOMBRES[k] ? NOMBRES[k][control.pc ? 1 : 0] : m);
+}
+
 const joyEl = document.getElementById('joy');
 const knob = document.getElementById('knob');
 const joyHint = document.getElementById('joyHint');
 const touch = document.getElementById('touch');
 let joyId = null, joyO = { x: 0, y: 0 }, camId = null, camLast = { x: 0, y: 0 };
+// mouse: si apretaste y soltaste casi sin moverte, fue un CLIC (puño); si te moviste, fue arrastrar la cámara
+const CLIC_PX = 6, CLIC_MS = 350;
+let mouseIni = null;
 
 touch.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -38,6 +80,7 @@ touch.addEventListener('pointerdown', e => {
     knob.style.transform = 'translate(0,0)';
   } else if (camId === null) {
     camId = e.pointerId; camLast = { x: e.clientX, y: e.clientY };
+    if (e.pointerType === 'mouse') mouseIni = { x: e.clientX, y: e.clientY, t: performance.now(), lejos: false };
   }
   touch.setPointerCapture(e.pointerId);
 });
@@ -55,11 +98,18 @@ touch.addEventListener('pointermove', e => {
   } else if (e.pointerId === camId) {
     input.camDX += e.clientX - camLast.x; input.camDY += e.clientY - camLast.y;
     camLast = { x: e.clientX, y: e.clientY };
+    if (mouseIni && !mouseIni.lejos && Math.hypot(e.clientX - mouseIni.x, e.clientY - mouseIni.y) > CLIC_PX) {
+      mouseIni.lejos = true; touch.classList.add('girando');
+    }
   }
 });
 function endPointer(e) {
   if (e.pointerId === joyId) { joyId = null; input.jx = input.jy = 0; joyEl.style.display = 'none'; }
-  if (e.pointerId === camId) camId = null;
+  if (e.pointerId === camId) {
+    camId = null;
+    if (mouseIni && e.type === 'pointerup' && !mouseIni.lejos && performance.now() - mouseIni.t < CLIC_MS) input.punoQ = CFG.buffer;
+    mouseIni = null; touch.classList.remove('girando');
+  }
 }
 touch.addEventListener('pointerup', endPointer);
 touch.addEventListener('pointercancel', endPointer);
@@ -81,12 +131,18 @@ bindBtn('bSuper', () => { input.superHeld = true; }, () => { input.superHeld = f
 addEventListener('keydown', e => {
   if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;   // escribiendo (nombre, editor)
   keys.add(e.code);
+  usarPC(true);
+  if (e.code === 'Tab') e.preventDefault();          // si no, el navegador mueve el foco entre botones
   if (e.repeat) return;
-  if (e.code === 'Space') { input.jumpQ = CFG.buffer; input.jumpHeld = true; e.preventDefault(); }
-  if (e.code === 'KeyJ' || e.code === 'KeyZ' || e.code === 'KeyF') input.atkQ = CFG.buffer;
-  if (e.code === 'KeyK' || e.code === 'KeyX' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') input.dashQ = CFG.buffer;
+  if (e.code === 'Space') {
+    // el mismo Espacio pide las dos cosas; jugador.js decide: en el suelo salta, en el aire pisotea
+    input.jumpQ = CFG.buffer; input.poundQ = CFG.buffer; input.jumpHeld = true; e.preventDefault();
+  }
+  if (e.code === 'KeyF') input.punoQ = CFG.buffer;
+  if (e.code === 'KeyE') input.leerQ = CFG.buffer;
+  if (e.code === 'KeyK' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') input.dashQ = CFG.buffer;
   if (e.code === 'KeyL' || e.code === 'KeyC') input.superHeld = true;
-  if (e.code === 'KeyR') input.recenter = true;
+  if (e.code === 'Tab') input.recenter = true;
   if ((e.code === 'KeyG' || e.code === 'Backquote') && atajos.debug) atajos.debug();
 });
 addEventListener('keyup', e => {
@@ -102,6 +158,7 @@ document.addEventListener('gesturestart', e => e.preventDefault());
 export function limpiarEntrada() {
   input.jx = input.jy = 0;
   input.jumpQ = input.atkQ = input.dashQ = 0;
+  input.punoQ = input.poundQ = input.leerQ = 0;
   input.jumpHeld = input.superHeld = false;
   input.camDX = input.camDY = 0;
 }

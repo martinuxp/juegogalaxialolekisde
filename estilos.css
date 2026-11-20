@@ -104,6 +104,12 @@ body:not(.lab) .tb.lab { display: none }
 #bAtk .ico, #bSuper .ico { width: 32px; height: 32px }
 #bDash .ico { width: 32px; height: 32px }
 #bAtk.leer { border-color: #ffe08a; box-shadow: 0 0 18px rgba(255,224,138,.45); animation: llamar 1.2s ease-in-out infinite }
+#bAtk .tecla { display: none }
+body.pc #bAtk .tecla { display: grid; place-items: center; position: absolute; top: -10px; left: -10px; width: 30px; height: 30px;
+  border-radius: 9px; background: #ffe08a; color: #3a2a00 }
+body.pc #bAtk .tecla .ico { width: 24px; height: 24px }
+body.pc #touch { cursor: grab }
+body.pc #touch.girando { cursor: grabbing }
 #bSuper.llamar { animation: llamar 1s ease-in-out infinite }
 @keyframes llamar { 50% { transform: scale(1.12); box-shadow: 0 0 30px rgba(125,255,168,.8) } }
 #bSuper { width: 70px; height: 70px; right: calc(124px + var(--sr)); bottom: calc(112px + var(--sb)); border-color: var(--verde);
@@ -197,3 +203,4 @@ body:not(.lab) .tb.lab { display: none }
 .dCor .ico { width: 13px; height: 13px; color: #ff6b81 }
 #saltarCine, #hSaltar { display: inline-flex; align-items: center; gap: 2px }
 #saltarCine .ico, #hSaltar .ico { width: 15px; height: 15px }
+body.pc #joyHint { display: none }   /* en PC no hay joystick: te mueves con WASD */
