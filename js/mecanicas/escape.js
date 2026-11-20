@@ -17,9 +17,11 @@
       que después mueve al jugador (fisica.js → pasoNewton).
    4. Suelta: sales disparado "hacia arriba" (opuesto a la gravedad).
 
-   DATO PARA LA FERIA: para llegar a un planeta VECINO basta un
-   poco menos que v_esc, porque antes de "irte al infinito" ya te
-   atrapa la gravedad del otro. Las misiones a la Luna hacen eso.
+   DATO PARA LA FERIA: para llegar a un planeta VECINO cercano
+   basta un poco menos que v_esc, porque antes de "irte al
+   infinito" ya te atrapa la gravedad del otro (las misiones a la
+   Luna hacen eso). Ícaro está tan lejos que en Columba sí hay
+   que pasar v_esc (nivel.js revisa la energía en pleno vuelo).
 
    SIMPLIFICACIONES: sin aire ni roce; el impulso es instantáneo
    (como un cohete que quema todo su combustible de una vez);
@@ -148,8 +150,10 @@ export function actualizarEscape(dt) {
 
     // las islas y rocas pertenecen a un planeta: caer en ellas cuenta como caer en ese planeta
     const destino = sim.choca ? (sim.choca.planeta || sim.choca) : null;
-    if (!destino) escape.resultado = 'escapa';
-    else if (destino === p.planet) escape.resultado = 'vuelve';
+    // ¿escapas? Se decide con la ENERGÍA, no con la simulación: la simulación dura 14 s y,
+    // con 90 % de v_esc, subes ~240 m y tardas más que eso en volver (parecería que escapas).
+    if (p.carga >= escape.vesc) escape.resultado = 'escapa';
+    else if (!destino || destino === p.planet) escape.resultado = 'vuelve';
     else escape.resultado = 'llega';
     escape.destino = destino;
     mat.color.setHex(COLORES[escape.resultado]);

@@ -21,7 +21,7 @@ Proyecto escolar de Física (2° medio, Liceo Camilo Henríquez, Temuco; profeso
 - **Aestus:** mareas y planeta de los ladrones.
 
 ## Mecánicas
-1. **Velocidad de escape** ✓ (18 nov): cañón de Columba (nivel 1) y SÚPER en el Laboratorio. Barra con marca de `v_esc = √(2GM/r)`, línea punteada que predice el vuelo con la misma función `pasoNewton` (leapfrog) que mueve al jugador. Para llegar a Ícaro basta ~75 % de `v_esc` (como las misiones a la Luna).
+1. **Velocidad de escape** ✓ (18 nov): cañón de Columba (nivel 1) y SÚPER en el Laboratorio. Barra con marca de `v_esc = √(2GM/r)`, línea punteada que predice el vuelo con la misma función `pasoNewton` (leapfrog) que mueve al jugador. Desde el 20 nov Ícaro está lejos (`lejano` en el nivel: solo dibujo, sin gravedad) y la meta del nivel 1 es `meta: { escapar: true }`: nivel.js revisa en pleno vuelo la energía `½v² − GM/r ≥ 0` (= pasar `v_esc`). Entonces `js/cineDespegue.js`: cinemática (animación, no física) hacia Ícaro, fundido y pantalla de carga con las fórmulas del nivel (números calculados) y datos curiosos; al seguir, `completarNivel()`.
 2. **Órbitas de Kepler:** `v = √(GM/a)`, `T² ∝ a³`.
 3. **Mareas:** `h(θ) ∝ (3cos²θ − 1)/2`. El Sol también causa mareas, más débiles. Ya se ven en el mar del menú (esfera estirada 1+2ε / 1−ε hacia la luna).
 4. Nivel final que combina todo.

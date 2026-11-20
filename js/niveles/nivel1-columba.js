@@ -13,7 +13,9 @@
                  final: salto, puño, dash y pisotón.
      4. CAÑÓN    un campo de fuerza (más alto que tu salto) lo
                  tapa hasta que le ganas al jefe. Después cargas
-                 (barra con v_esc) y te disparas a Ícaro.
+                 (barra con v_esc) y te disparas a Ícaro, que está
+                 MUY lejos: solo llegas si pasas v_esc (escapas de
+                 Columba). Si no, la gravedad te trae de vuelta.
    Un OVNI de Ícaro da vueltas al planeta en órbita circular
    de verdad: v = √(G·M/r) (js/ovni.js).
    Si caes al mar, vuelves al último lugar seguro.
@@ -49,7 +51,6 @@ const S = {
 };
 const DIR_CANON = camino(S.canon);
 const DIR_ARENA = camino(S.arena);
-const DIST_ICARO = 112;                 // Ícaro está "encima" del cañón, a esta distancia del centro
 
 export default {
   id: 'columba',
@@ -63,8 +64,11 @@ export default {
     // R = radio del fondo del mar, mar = radio de la superficie del agua.
     // g = gravedad en R (m/s²). Con eso: G·M = g·R²
     { name: 'Columba', c: new V3(0, 0, 0), R: 40, mar: R_MAR, g: 27.5, color: 0x4d5f66, colorMar: 0x5d8a99, seed: 31 },
-    { name: 'Ícaro', c: DIR_CANON.clone().multiplyScalar(DIST_ICARO), R: 6, g: 40, color: 0xe08a3f, seed: 77 },
   ],
+
+  // Ícaro, muy lejos, en la dirección del cañón. Es SOLO dibujo (no tiene gravedad en el juego):
+  // a 650 m su atracción sería casi nada al lado de la de Columba. Se llega con la cinemática del despegue.
+  lejano: { nombre: 'Ícaro', dir: DIR_CANON, dist: 650, R: 75, color: 0xe08a3f, seed: 77 },
 
   // islas: ancho = radio de lo que se ve sobre el agua; alto = cuánto asoma
   // veg = cuánta vegetación lleva (js/vegetacion.js); si falta un número se calcula con el tamaño
@@ -158,11 +162,12 @@ export default {
       paginas: [
         'Súbete al cañón y mantén CAÑÓN (L). Suelta para disparar.',
         'La marca blanca de la barra es la velocidad de escape: v_esc = √(2·G·M/r). Con ella no vuelves nunca a Columba.',
-        'No la necesitas para llegar a Ícaro: la línea punteada te muestra dónde vas a caer.',
+        'Ícaro está muy lejos. Para llegar tienes que pasar la marca: si no, la gravedad de Columba te trae de vuelta.',
+        'La línea punteada te muestra el vuelo. Si se vuelve lila y no cae, ¡escapaste!',
       ],
     },
   ],
 
-  // se gana al aterrizar en este planeta
-  meta: { aterrizarEn: 1 },
+  // se gana al ESCAPAR de Columba (energía ½v² − G·M/r ≥ 0) rumbo a Ícaro (nivel.js + cineDespegue.js)
+  meta: { escapar: true },
 };

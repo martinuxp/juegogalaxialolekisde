@@ -120,7 +120,7 @@ escuchar('completo', ({ def, tiempo }) => {
   setTimeout(() => {
     const sig = NIVELES[def.numero];        // el siguiente (los números parten en 1)
     const m = Math.floor(tiempo / 60), s = Math.floor(tiempo % 60).toString().padStart(2, '0');
-    $('cTitulo').textContent = def.meta && def.numero === 1 ? '¡Llegaste a Ícaro!' : '¡Nivel completo!';
+    $('cTitulo').textContent = def.meta && def.meta.escapar ? `¡Escapaste de ${def.planetas[0].name}!` : '¡Nivel completo!';
     $('cTexto').innerHTML = `Nivel ${def.numero} · ${def.nombre} · ${m}:${s}` +
       (sig ? '' : '<br><br>El siguiente planeta está en construcción.');
     $('cSeguir').classList.toggle('oculto', !sig);

@@ -7,6 +7,7 @@
      'cine'     → cinemática del despertar
      'juego'    → jugando
      'cartel'   → leyendo un cartel (el juego queda en pausa)
+     'carga'    → pantalla de carga al escapar (cineDespegue.js)
      'completo' → pantalla de nivel completo
      'editor'   → editor de planetas (js/editor/editor.js)
 
@@ -25,6 +26,7 @@ import { animarMundo, piezas } from './mundo.js';
 import { cargarNivel, stepNivel } from './nivel.js';
 import { stepOvni, animarOvni, ovni } from './ovni.js';
 import { stepJefe, pelea } from './jefe.js';
+import { actualizarCineDespegue, _despegue } from './cineDespegue.js';
 import { actualizarEscape } from './mecanicas/escape.js';
 import { actualizarHUD, mostrarHUD, toast, tituloNivel } from './ui.js';
 import { mostrarMenu, conectarMenu, abrirPersonaje, jugadorALaPlaya, animarJugadorMenu } from './menu.js';
@@ -162,7 +164,7 @@ function frame(now) {
   actualizarEscape(dt);
 
   const dtCine = vertical.matches ? 0 : dt;           // en vertical, la cinemática también espera
-  if (!actualizarDespertar(dtCine) && !actualizarCineOvni(dtCine)) updateCamera(dt);
+  if (!actualizarDespertar(dtCine) && !actualizarCineOvni(dtCine) && !actualizarCineDespegue(dtCine)) updateCamera(dt);
   renderer.render(scene, camera);
   if (jugando) actualizarHUD(dt);
 }
@@ -175,7 +177,7 @@ requestAnimationFrame(frame);
 
 // gancho para pruebas automáticas (Playwright): permite avanzar la física a mano
 window.__game = {
-  juego, player, step, ajustes, input, cam, piezas, ovni, pelea, audio: _audio,
+  juego, player, step, ajustes, input, cam, piezas, ovni, pelea, audio: _audio, despegue: _despegue,
   enemies: () => juego.enemigos,
   jugarNivel: i => { limpiarEntrada(); empezarNivel(i); },
   laboratorio: () => { mostrarMenu(false); jugadorALaPlaya(false); cargarNivel(LABORATORIO); juego.modo = 'juego'; mostrarHUD(true); },
