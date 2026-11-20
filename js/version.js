@@ -10,6 +10,7 @@
      · fecha: el día del cambio (hora de Chile)
    ========================================================= */
 export const HISTORIAL = [
+  { v: '0.20', fecha: '20 nov', cambios: 'Ícaro: meowlitos escondidos que salen del suelo en el laberinto y de la arena en el camino, más gatos-alien en el laberinto, ruinas del desierto sólidas (columnas, arco, obeliscos, estatua) y música: la pelea de la cueva suena en el camino y la de Meowl entra con crossfade' },
   { v: '0.19', fecha: '20 nov', cambios: 'Ícaro desde arriba: desierto de arena hirviendo que quema, islas y pasillos de roca, fisuras que piden las botas, cinemática al salir de la grieta, jefe Meowl con sus meowlitos, confeti y cañón a Kepler. Sonidos nuevos del desierto y de la pelea' },
   { v: '0.18', fecha: '20 nov', cambios: 'Ícaro: pozo vertical procedural con capas de colores, repisas con gatos-alien, eco en la cueva y salida a la luz. Jugar sigue en el planeta donde ibas y Ícaro guarda las botas y la última repisa' },
   { v: '0.17', fecha: '20 nov', cambios: 'Botas de salto: mantener para agacharte, destello y sonido al estar listo, salto alto con control total. Cámara que no se mete en las rocas. Charlas más rápidas con fondo rojo difuminado. Música de las Dunas Subterráneas con crossfade a la versión de pelea' },

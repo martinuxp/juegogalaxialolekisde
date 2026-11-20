@@ -384,7 +384,7 @@ function punchHits() {
   const p = player; if (p.t < CFG.punchFrom || p.t > CFG.punchTo) return;
   const hc = _t2.copy(p.pos).addScaledVector(p.facing, CFG.punchReach);
   for (const e of juego.enemigos) {
-    if (e.dead || p.punchHit.has(e)) continue;
+    if (e.dead || e.oculto || p.punchHit.has(e)) continue;
     if (hc.distanceTo(e.pos) < CFG.punchR + e.r) {
       p.punchHit.add(e);
       if (e.T.punch > 0) hurtEnemy(e, e.T.punch, _t.copy(p.facing).multiplyScalar(9).addScaledVector(e.up, 5), 0.5);

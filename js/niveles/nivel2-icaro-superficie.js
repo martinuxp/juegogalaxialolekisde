@@ -34,7 +34,8 @@ const nivel = {
   numero: 2,
   nombre: 'Ícaro',
   ley: 'Velocidad de escape',
-  musica: 'desierto',            // audio.js: viento del desierto (la música de verdad la pone muxp)
+  musica: 'dunasCombate',        // audio.js: la música de pelea de la cueva es el fondo del camino (la pidió muxp)
+  musicaJefe: 'meowlPelea',      // y al despertar Meowl entra su música con un crossfade
   botas: true,                   // llegas con las botas de salto puestas
 
   // luz de desierto al atardecer: cielo naranjo, luz cálida y una neblina amarilla que se come lo lejano
@@ -63,6 +64,17 @@ const nivel = {
     ['alien', 0, dirXZ(13, -93), 0.05, 4],
     ['alien', 0, dirXZ(7, -88), 0.05, 4],
     ['alien', 0, dirXZ(13, -109), 0.05, 4],
+    // meowlitos (meowl.js) escondidos BAJO LA ARENA, al lado de las rocas: cuando pasas cerca salen,
+    // brillan medio segundo y te saltan encima. Si fallan, caen a la arena y se vuelven a hundir.
+    ['meowlito', 0, dirXZ(4, -19), 0.02],         // entre la isla 1 y la 2
+    ['meowlito', 0, dirXZ(-5, -31.5), 0.02],      // entre la isla 2 y la 3
+    ['meowlito', 0, dirXZ(5.5, -44), 0.02],       // entre la isla 3 y la 4
+    ['meowlito', 0, dirXZ(4, -58.5), 0.02],       // en la esquina de los pasillos
+    ['meowlito', 0, dirXZ(12.8, -75), 0.02],      // en el puente roto
+    ['meowlito', 0, dirXZ(1.5, -88), 0.02],       // al pie de la mesa B
+    // y dos escondidos en las grietas de las mesas altas (salen de la roca y te persiguen sin bajarse)
+    ['meowlito', 0, dirXZ(5, -105), 0.05, 4],
+    ['meowlito', 0, dirXZ(6, -118.5), 0.05, 3.5],
   ],
 
   carteles: [

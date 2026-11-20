@@ -31,7 +31,8 @@ import { mostrarHUD } from './ui.js';
 import { limpiarEntrada } from './entrada.js';
 
 export { R_ARENA, G_ARENA, dirXZ, puntoXZ, localXZ, ejesEn, H_FISURA, H_ARENA_JEFE, PIEZAS, ARENA_JEFE, TRAMOS, tiroDeVuelta } from './superficieDatos.js';
-import { R_ARENA, G_ARENA, dirXZ, puntoXZ, localXZ, ejesEn, H_FISURA, H_ARENA_JEFE, PIEZAS, ARENA_JEFE, TRAMOS, tiroDeVuelta } from './superficieDatos.js';
+import { R_ARENA, G_ARENA, dirXZ, puntoXZ, localXZ, ejesEn, H_FISURA, H_ARENA_JEFE, PIEZAS, ARENA_JEFE, TRAMOS, tiroDeVuelta,
+  COLUMNAS, ARCO, OBELISCOS, ESTATUA, BRAZO, solidosRuinas } from './superficieDatos.js';
 
 const FONDO = 4;
 
@@ -83,6 +84,11 @@ export function construirSuperficie(grupo, planetas) {
   grupo.add(crearArena(), crearDomo());
   // 3) decorado: ruinas, la estatua enterrada, fisuras que brillan, la grieta de salida
   crearRuinas(grupo);
+  // las ruinas también chocan: cajas y esferas con las MISMAS medidas del dibujo (superficieDatos.js).
+  // Con m.planeta = P se pueden pisar y la sombra cae encima, igual que en las rocas.
+  const { cajas: cr, esferas } = solidosRuinas();
+  for (const k of cr) { const m = agregarMuro(k.c, k.ex, k.ey, k.ez, k.medio); m.planeta = P; m.ruina = true; }
+  for (const e of esferas) mundo.solidos.push({ c: e.c, R: e.R, planeta: P, ruina: true });
   crearFisuras(grupo);
   crearGrieta(grupo);
   crearVapores(grupo);
@@ -179,7 +185,7 @@ function crearDomo() {
   return gr;
 }
 
-/* ---------- ruinas (solo dibujo): columnas, arcos, obeliscos y una estatua enterrada ---------- */
+/* ---------- ruinas: columnas, arcos, obeliscos y una estatua enterrada (sus choques: solidosRuinas) ---------- */
 function crearRuinas(grupo) {
   const r = rng(404), piedra = toon(0xe8b465, { map: null }), oscura = toon(0xb86e32, { map: null });
   const poner = (obj, x, z, h, giro = 0, inclina = 0) => {
@@ -205,15 +211,14 @@ function crearRuinas(grupo) {
     return g;
   };
   // columnas a los dos lados de los pasillos y entre las islas
-  for (const [x, z, alto, rota] of [[-6.5, -56, 9, false], [6, -55.5, 6, true], [-5.5, -67.5, 10, false], [15, -70, 7, true], [6, -73, 8, false],
-    [15.5, -78, 9, false], [5.5, -82, 5, true], [-9, -20, 6, true], [9, -36, 7, false], [-8, -46, 5, true], [20, -100, 10, false], [-5, -112, 8, true]])
+  for (const [x, z, alto, rota] of COLUMNAS)
     poner(columna(alto, rota), x, z, 0, r() * 3, rota ? (r() - 0.5) * 0.3 : 0);
   // ARCO sobre el primer pasillo: dos pilares y un dintel (a 10 m: no te topas al saltar)
   const arco = new THREE.Group();
-  for (const sx of [-1, 1]) { const p = columna(10, false); p.position.x = sx * 3.4; arco.add(p); }
-  const dintel = outline(new THREE.Mesh(new THREE.BoxGeometry(9.5, 1.3, 2.2), oscura), 0.03); dintel.position.y = 10.9;
+  for (const sx of [-1, 1]) { const p = columna(ARCO.alto, false); p.position.x = sx * ARCO.sep; arco.add(p); }
+  const dintel = outline(new THREE.Mesh(new THREE.BoxGeometry(...ARCO.dintel), oscura), 0.03); dintel.position.y = ARCO.yDintel;
   arco.add(dintel);
-  poner(arco, 0, -61, 0);
+  poner(arco, ARCO.x, ARCO.z, 0);
   // OBELISCOS con el anillo de antena de los aliens
   const obelisco = alto => {
     const g = new THREE.Group();
@@ -224,7 +229,7 @@ function crearRuinas(grupo) {
     g.add(b, anillo, bola);
     return g;
   };
-  for (const [x, z, alto] of [[-22, -30, 16], [26, -60, 20], [-24, -128, 22], [22, -140, 18]]) poner(obelisco(alto), x, z, 0, r() * 2);
+  for (const [x, z, alto, giro] of OBELISCOS) poner(obelisco(alto), x, z, 0, giro);
   // ESTATUA enterrada: la cabeza gigante de un gato-alien (diseño propio), medio hundida en la arena
   const cab = new THREE.Group();
   const cara = outline(new THREE.Mesh(new THREE.SphereGeometry(7, 24, 16), piedra), 0.015); cara.scale.set(1.1, 0.92, 1);
@@ -237,13 +242,13 @@ function crearRuinas(grupo) {
     const antena = outline(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 6, 6), oscura), 0.03);
     antena.position.set(sx * 1.6, 8.5, -0.5); antena.rotation.z = sx * 0.3; cab.add(antena);
   }
-  poner(cab, -38, -86, -1.5, 0.7, 0.35);
+  poner(cab, ESTATUA.x, ESTATUA.z, ESTATUA.h, ESTATUA.giro, ESTATUA.inclina);
   // un brazo de piedra roto que sale de la arena, al otro lado
   const brazo = new THREE.Group();
   const ante = outline(new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2, 12, 8), piedra), 0.02); ante.position.y = 4;
   const mano = outline(new THREE.Mesh(new THREE.SphereGeometry(2.4, 10, 8), oscura), 0.02); mano.position.y = 10.5; mano.scale.set(1, 1.2, 0.7);
   brazo.add(ante, mano);
-  poner(brazo, 34, -112, -1, 0.4, -0.4);
+  poner(brazo, BRAZO.x, BRAZO.z, BRAZO.h, BRAZO.giro, BRAZO.inclina);
 }
 
 /* ---------- fisuras: rajas en la arena al pie de cada pared, que brillan de calor ---------- */

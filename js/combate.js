@@ -25,7 +25,7 @@ export function stepContacts() {
   const p = juego.jugador;
   if (p.state === 'launch' || p.state === 'vuelo') return;
   for (const e of juego.enemigos) {
-    if (e.dead) continue;
+    if (e.dead || e.oculto) continue;                          // escondido bajo el suelo (meowlito en emboscada)
     _n.copy(p.pos).sub(e.pos);
     const d = _n.length(), min = p.r + e.r;
     if (d >= min) continue;
