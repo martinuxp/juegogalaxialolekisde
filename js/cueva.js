@@ -53,10 +53,10 @@ function halo(rgba, tam) {
  * "ocultas" del nivel, que son las que chocan), cristales, estalagmitas y el
  * rayo de luz que entra por la grieta allá arriba (la salida).
  */
-export function decorarCueva(grupo, planetas, { salida: [sx, sz] = [6.5, -31], bocaAlto = 118 } = {}) {
+export function decorarCueva(grupo, planetas, { salida: [sx, sz] = [6.5, -31], bocaAlto = 118, sinRayo = false } = {}) {
   const P = planetas[0], r = rng(91);
-  // SUELO: un casquete de la esfera (80 m de radio). Es la MISMA esfera que choca, así que calza exacto.
-  const ang = 80 / P.R;
+  // SUELO: un casquete de la esfera (110 m de radio, llega hasta el fondo del laberinto). Es la MISMA esfera que choca.
+  const ang = 110 / P.R;
   const suelo = new THREE.Mesh(ondas(new THREE.SphereGeometry(P.R, 160, 48, 0, Math.PI * 2, 0, ang), ARENA, 3, 0.6),
     toon(0xffffff, { map: null, vertexColors: true }));
   suelo.position.copy(P.c);
@@ -84,7 +84,8 @@ export function decorarCueva(grupo, planetas, { salida: [sx, sz] = [6.5, -31], b
     const x = Math.cos(a) * R0, z = -12 + Math.sin(a) * R0 * 1.3;
     if (Math.abs(x) < 5 && z > -16) continue;                            // nada en el pasillo
     if (Math.hypot(x, z + 22) < 10) continue;                            // ni en la sala
-    if (Math.abs(x) < 7 && z < -30) continue;                            // ni en el pasillo al pozo
+    if (Math.abs(x) < 7 && z < -30) continue;                            // ni en el pasillo al laberinto
+    if (Math.abs(x) < 24 && z < -40) continue;                           // ni dentro del laberinto
     const alto = 1.5 + r() * 4;
     const { p, d } = enSuelo(x, z, alto / 2 - 0.2);
     const e = outline(new THREE.Mesh(new THREE.ConeGeometry(0.4 + r() * 0.7, alto, 6), rocaMat), 0.05);
@@ -106,6 +107,8 @@ export function decorarCueva(grupo, planetas, { salida: [sx, sz] = [6.5, -31], b
     const h = halo('rgba(255,170,80,.5)', 2.6); h.position.copy(enSuelo(x, z, 0.4).p); grupo.add(h);
   }
 
+  cueva.polvo = null; cueva.salida = null;
+  if (sinRayo) return;                 // el laberinto (pozo.js) dibuja su propia luz por las chimeneas
   // RAYO DE LUZ que entra por la grieta, muy arriba: muestra que la salida está hacia ARRIBA
   const salida = enSuelo(sx, sz);
   // degradé: transparente abajo, más claro arriba (la luz se va perdiendo en el polvo al bajar)
