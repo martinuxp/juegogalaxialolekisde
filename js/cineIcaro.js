@@ -284,7 +284,7 @@ function entrarALaCueva() {
   respawnPlayer();
   player.state = 'dormido'; player.acostado = 1; player.ojos = 0.06; player.invul = 0;
   emitir('caeCueva');
-  emitir('musica', 'cueva');
+  emitir('musica', 'dunas');
   setTimeout(() => $('fundido').classList.remove('ver'), 350);
 }
 
@@ -362,9 +362,10 @@ function revisarCueva() {
     emitir('leer', {
       icono: 'botas',
       paginas: [
-        'Botas de salto.\nMantén {super} en el suelo para cargar el salto. Suelta para saltar.',
-        'Mientras más cargas, más rápido sales del suelo. La barra te muestra esa velocidad.',
-        'Para subir h metros hace falta v = √(2·g·h). Al subir, la gravedad te frena: tu energía de movimiento (½·v²) se convierte en altura (g·h).',
+        'Botas de salto.\nMantén {super}: te agachas. Cuando brilles, suelta y saltas mucho más alto.',
+        'En el aire es un salto normal: te mueves, y puedes usar {dash} o el pisotón.',
+        'Las botas te lanzan a 20 m/s; un salto normal sale a 14 m/s. La gravedad te va frenando hasta que te detienes arriba.',
+        'Altura máxima: h = v² / (2·g). Aquí g = 20 m/s², así que 20² / 40 = 10 m. Con un salto normal, solo 4,9 m.',
         'La salida está allá arriba, donde entra la luz.',
       ],
     });
@@ -525,7 +526,7 @@ function terminarCharla() {
   C.saliendo = 1;                       // ella sigue caminando a la oscuridad y se apagan sus ojos
   C.m.meta.ojos = 0; C.m.meta.apunta = 0; C.m.meta.hombros = 0;
   if (C.saltado) C.m.facing.copy(pos.s).negate();
-  emitir('musica', 'cueva');
+  emitir('musica', 'dunas');
   // la cámara del juego parte desde donde quedó, detrás del protagonista
   cam.fwd.copy(p.facing); cam.up.copy(p.up);
   cam.pos.copy(camera.position); cam.look.copy(p.pos).addScaledVector(p.up, 1);

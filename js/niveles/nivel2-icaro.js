@@ -52,7 +52,7 @@ export default {
   numero: 2,
   nombre: 'Ícaro',
   ley: 'Velocidad de escape',
-  musica: 'cueva',                 // audio.js: ambiente de la cueva (la personaje trae su propio tema)
+  musica: 'dunas',                 // audio.js: Dunas Subterráneas (muxp); al pelear, crossfade a la versión de combate
   intro: 'icaro',                  // main.js: al empezar, cinemática de llegada (js/cineIcaro.js)
 
   // luz de la cueva (escena.js → aplicarAmbiente): casi nada de luz de cielo, sin sol ni estrellas,

@@ -28,6 +28,12 @@ export const CFG = {
   superRitmo: 22,   // cuánta velocidad se carga por segundo (m/s cada s)
   superMax: 60,     // tope de la barra (m/s)
   superMin: 4,      // si sueltas antes de esto, no sale nada
+
+  // BOTAS DE SALTO (Ícaro): mantienes SÚPER, te agachas y, cuando brillas, sueltas.
+  // Es un salto normal (te mueves, haces dash) pero con más velocidad hacia arriba:
+  //   altura máxima h = v² / (2·g)   →  en la cueva (g = 20): 20² / 40 = 10 m (el normal: 4,9 m)
+  botasV: 20,       // velocidad del súper salto (m/s)
+  botasCarga: 0.45, // segundos agachad@ hasta que está listo
 };
 
 /** Corazones según la dificultad elegida en el menú. */

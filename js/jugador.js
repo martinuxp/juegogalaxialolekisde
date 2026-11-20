@@ -24,7 +24,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { CFG } from './config.js';
 import { makeBody, computeGravity, updateUp, collide, mundo, superficieEn } from './fisica.js';
 import { input, keys } from './entrada.js';
-import { juego, ajustes, emitir } from './estado.js';
+import { juego, ajustes, emitir, escuchar } from './estado.js';
 import { hurtEnemy } from './enemigos.js';
 import { shockwave } from './efectos.js';
 import { cam } from './camara.js';
@@ -39,6 +39,8 @@ export const player = Object.assign(makeBody(CFG.r), {
   jumping: false, jumpCut: false, dashDir: new V3(), punchHit: new Set(), dashHit: new Set(),
   launch: null, launchCD: 0, voidT: 0, land: 0,
   tieneSuper: false,       // ¿ya puede usar el supersalto? (por ahora: solo con el cañón)
+  botas: false,            // botas de salto (Ícaro): el súper salto es un salto normal más alto
+  superListo: false,       // agachad@ con las botas: ¿ya brilló?
   fijo: null,              // si carga dentro del cañón, queda fijo en este punto
   seguro: new V3(),        // último lugar seguro en tierra (para volver si caes al mar)
   acostado: 0, ojos: 1,    // para la cinemática del despertar
@@ -136,6 +138,16 @@ function headTex() {   // planetita: océano + continentes
   // (ambiente.luzJugador), por ejemplo en la cueva oscura de Ícaro.
   pl.luz = new THREE.PointLight(0xffe6c2, 0, 22, 1.3);
   scene.add(pl.luz);              // va en la escena y no en el grupo: el grupo parpadea cuando te pegan
+  // destello del súper salto listo (sprite que se suma a lo que hay detrás)
+  {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+    const g = cv.getContext('2d'), grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.25, 'rgba(150,245,255,.8)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
+    pl.destello = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    pl.destello.visible = false; pl.destelloT = 0;
+    scene.add(pl.destello);
+  }
   pl.fist = outline(new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), toon(0xffd36b, { emissive: 0x553300 })), 0.1);
   pl.fist.visible = false; pl.body.add(pl.fist);
   pl.shadow = new THREE.Mesh(new THREE.CircleGeometry(0.62, 24),
@@ -152,7 +164,8 @@ export function applyLook() {
 applyLook();
 
 /** Pone (o saca) las botas de salto. */
-export function mostrarBotas(v) { pl.botas.visible = v; }
+export function mostrarBotas(v) { pl.botas.visible = v; player.botas = v; }
+escuchar('superListo', () => { pl.destelloT = 0.35; });
 
 /** Muestra (o esconde) la lunita dentro del casco. */
 export function mostrarLunita(v) { pl.moon.visible = v; }
@@ -220,7 +233,8 @@ export function stepPlayer(dt) {
   // (o dentro del cañón, que hace lo mismo: un impulso de una vez)
   if (input.superHeld && p.grounded && p.state === 'normal') {
     if (juego.enCanon) { empezarCarga(p, juego.enCanon); return; }
-    if (p.tieneSuper) { empezarCarga(p, null); return; }
+    if (p.botas) { p.state = 'agacha'; p.t = 0; p.superListo = false; emitir('agacha'); }
+    else if (p.tieneSuper) { empezarCarga(p, null); return; }
   }
 
   // LEER: junto a un cartel, el botón de ataque (celular) o la E (PC) abre el diálogo
@@ -287,6 +301,24 @@ export function stepPlayer(dt) {
       vy = p.dashGround ? -6 : 0;                                    // en el suelo se pega a la superficie
       if (p.t >= CFG.dashTime) { p.state = 'normal'; _hv.multiplyScalar(CFG.dashKeep); }
       break;
+    case 'agacha': {
+      // SÚPER SALTO con las botas: agachad@ (casi sin moverte) hasta que brilla; al soltar, ¡arriba!
+      p.t += dt;
+      _t.copy(mv).multiplyScalar(CFG.run * 0.15);
+      moveTowards(_hv, _t, CFG.groundAccel * dt);
+      vy -= p.gmag * dt;
+      if (!p.superListo && p.t >= CFG.botasCarga) { p.superListo = true; emitir('superListo', p.pos); }
+      if (!input.superHeld) {
+        if (p.superListo && (p.grounded || p.coyote > 0)) {
+          // mismo salto de siempre, con más velocidad: h = v²/(2g). Después es un estado 'normal':
+          // te mueves en el aire y puedes hacer dash o pisotón.
+          vy = CFG.botasV; p.grounded = false; p.coyote = 0; p.jumping = false; p.land = -0.4;
+          emitir('superSalto');
+        }
+        p.state = 'normal'; p.superListo = false;
+      }
+      break;
+    }
     case 'poundWind':
       p.t += dt; _hv.set(0, 0, 0); vy = 0; if (p.t >= CFG.poundWind) p.state = 'pound';
       break;
@@ -419,6 +451,11 @@ export function updatePlayerVisuals(dt, elapsed) {
     pl.body.position.x = Math.sin(elapsed * 60) * 0.03 * k;
   } else pl.body.position.x = 0;
   if (p.state === 'vuelo') { sx = sz = 0.88; sy = 1.2; }
+  if (p.state === 'agacha') {   // botas: se agacha; cuando está listo, tiembla un poquito
+    const k = clamp(p.t / CFG.botasCarga, 0, 1);
+    sy = 1 - 0.28 * k; sx = sz = 1 + 0.14 * k;
+    pl.body.position.x = p.superListo ? Math.sin(elapsed * 70) * 0.02 : 0;
+  }
   pl.body.scale.set(sx, sy, sz);
   // acostado en la cama de flores (cinemática): girar el cuerpo 90° para que mire al cielo
   pl.body.rotation.x -= Math.PI / 2 * p.acostado;
@@ -433,8 +470,18 @@ export function updatePlayerVisuals(dt, elapsed) {
   pl.arms[0].rotation.x = sw; pl.arms[1].rotation.x = -sw;
   pl.head.getWorldQuaternion(_q); _q.invert().multiply(camera.quaternion); pl.ring.quaternion.copy(_q);
   pl.group.visible = !(p.invul > 0 && Math.floor(elapsed * 16) % 2 === 0);
-  const brillo = p.state === 'pound' || p.state === 'poundWind' ? 0x664400 : p.state === 'carga' ? 0x224466 : 0x000000;
+  const brillo = p.state === 'pound' || p.state === 'poundWind' ? 0x664400 : p.state === 'carga' ? 0x224466
+    : p.state === 'agacha' && p.superListo ? (Math.floor(elapsed * 10) % 2 ? 0x2a7d8a : 0x14505a) : 0x000000;
   pl.mat.emissive.setHex(brillo);
+  // DESTELLO cuando el súper salto está listo: un brillo celeste que crece y se apaga en 0,35 s
+  if (pl.destelloT > 0) {
+    pl.destelloT -= dt;
+    const k = 1 - pl.destelloT / 0.35;
+    pl.destello.visible = true;
+    pl.destello.position.copy(p.pos).addScaledVector(p.up, 0.1);
+    pl.destello.scale.setScalar(0.6 + 3.2 * k);
+    pl.destello.material.opacity = 1 - k;
+  } else pl.destello.visible = false;
   const h = rayHit(p.pos, p.gdir);
   if (h && p.state !== 'launch') {
     _sp.copy(p.pos).addScaledVector(p.gdir, h.t); _sn.copy(_sp).sub(h.s.c).normalize();
