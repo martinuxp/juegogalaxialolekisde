@@ -3,7 +3,8 @@
    ---------------------------------------------------------
    Lee la definición del nivel (js/niveles/...) y crea:
    planetas, mar, islas, rocas, carteles, flores, el cañón,
-   el fragmento del alma lunar y los anillos (Laboratorio).
+   la vegetación (vegetacion.js), el fragmento del alma lunar
+   y los anillos (Laboratorio).
    También le pasa los sólidos a fisica.js para que la
    gravedad y los choques usen exactamente lo mismo.
 
@@ -16,6 +17,7 @@ import { scene, toon, outline, planetGeo, faceNormal, orient, cartel, gradMap } 
 import { definirMundo, mundo, superficieEn, agregarMuro } from './fisica.js';
 import { juego } from './estado.js';
 import { iconoEnCanvas } from './iconos.js';
+import { crearVegetacion } from './vegetacion.js';
 import { paletaDe } from './niveles/formato.js';
 
 let grupo = null;          // todo lo del nivel cuelga de aquí, así se borra fácil
@@ -24,7 +26,8 @@ export const piezas = {    // cosas del nivel que nivel.js necesita mover o most
   canon: null,
   carteles: [],     // { obj, pos, arriba, paginas, icono }
   flores: null,
-  muros: [],        // { mesh, solido, base }: los muros que baja el botón
+  muros: [],        // { mesh, solido, base }: los muros que baja el botón (o el campo de fuerza que apaga el jefe)
+  vegetacion: null,
   boton: null,      // { mesh, pos, arriba, apretado }
 };
 
@@ -54,7 +57,7 @@ export function limpiarMundo() {
   scene.remove(grupo);
   grupo = null;
   piezas.fragmento = null; piezas.canon = null; piezas.carteles = []; piezas.flores = null;
-  piezas.muros = []; piezas.boton = null;
+  piezas.muros = []; piezas.boton = null; piezas.vegetacion = null;
   juego.pads = null;
 }
 
@@ -200,7 +203,12 @@ function crearMuros(P, d) {
   const arriba = d.dir.clone();
   const x = tangent(new V3(), new V3(1, 0, 0), arriba).normalize();
   const z = new V3().crossVectors(x, arriba).normalize();
-  const piedra = toon(0x8d8a9e, { flatShading: true }), borde = toon(0x6c6880);
+  // estilo 'campo': campo de fuerza de los aliens (verde, se ve a través); si no, muro de piedra
+  const campo = d.estilo === 'campo';
+  const piedra = campo
+    ? new THREE.MeshBasicMaterial({ color: 0x8cff6b, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
+    : toon(0x8d8a9e, { flatShading: true });
+  const borde = campo ? toon(0x55506e) : toon(0x6c6880);
   const hundido = 0.6;                                  // parte que queda bajo el suelo (por la curvatura)
   const altoTotal = d.alto + hundido;
   for (const [eje, signo] of [[x, 1], [x, -1], [z, 1], [z, -1]]) {
@@ -214,7 +222,13 @@ function crearMuros(P, d) {
     const tope = new THREE.Mesh(new THREE.BoxGeometry(d.grosor + 0.2, 0.25, largo * 2 + 0.2), borde);
     tope.position.y = altoTotal / 2;
     mesh.add(tope);
-    outline(mesh, 0.03);
+    if (campo) {                                         // postes de metal en las esquinas del campo
+      for (const sz of [-1, 1]) {
+        const poste = outline(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, altoTotal, 8), borde), 0.06);
+        poste.position.z = sz * largo;
+        mesh.add(poste);
+      }
+    } else outline(mesh, 0.03);
     mesh.position.copy(c);
     const m4 = new THREE.Matrix4().makeBasis(eje, arriba, otro);
     mesh.quaternion.setFromRotationMatrix(m4);
@@ -266,6 +280,18 @@ export function construirMundo(def) {
     if (Rk.isla) continue;
     const m = new THREE.Mesh(new THREE.IcosahedronGeometry(Rk.R, 1), toon(0x9a96a8, { flatShading: true }));
     outline(m, 0.05); m.position.copy(Rk.c); grupo.add(m);
+  }
+
+  // 2b) vegetación (solo decoración, no choca)
+  if (def.vegetacion) {
+    const P = mundo.planetas[def.vegetacion.planeta];
+    const lista = (def.islas || []).map((d, i) => ({ def: d, solido: islas[i] })).filter(x => x.def.planeta === def.vegetacion.planeta);
+    const evitar = [];
+    for (const c of def.carteles || []) evitar.push(puntoEnSuelo(mundo.planetas[c.planeta], c.dir));
+    for (const k of ['canon', 'boton', 'flores']) if (def[k]) evitar.push(puntoEnSuelo(mundo.planetas[def[k].planeta], def[k].dir));
+    for (const [, pi, d] of def.enemigos || []) evitar.push(puntoEnSuelo(mundo.planetas[pi], d));
+    piezas.vegetacion = crearVegetacion(P, lista, { evitar, camino: def.vegetacion.camino, seed: def.vegetacion.seed || 5 });
+    grupo.add(piezas.vegetacion);
   }
 
   // 3) carteles: un poste con una tabla. Con "paginas" se leen como diálogo (dialogo.js);

@@ -7,9 +7,15 @@
      1. SALTO    islitas separadas por 6 m de agua
      2. DASH     huecos de 14,5 m: un salto llega a ~12,9 m
                  (medido); salto + dash cayendo llega a ~16–18 m
-     3. PISOTÓN  el cañón está rodeado de muros más altos que
-                 tu salto; un pisotón sobre el botón los baja
-     4. CAÑÓN    cargas (barra con v_esc) y te disparas a Ícaro
+     3. ARENA    isla grande: el ovni de Ícaro baja aliens y al
+                 JEFE (js/jefe.js). Aquí se aprende el PISOTÓN,
+                 lo único que le hace daño al jefe. Es el examen
+                 final: salto, puño, dash y pisotón.
+     4. CAÑÓN    un campo de fuerza (más alto que tu salto) lo
+                 tapa hasta que le ganas al jefe. Después cargas
+                 (barra con v_esc) y te disparas a Ícaro.
+   Un OVNI de Ícaro da vueltas al planeta en órbita circular
+   de verdad: v = √(G·M/r) (js/ovni.js).
    Si caes al mar, vuelves al último lugar seguro.
 
    Las instrucciones están en CARTELES: te acercas, tocas LEER
@@ -37,11 +43,12 @@ const S = {
   salto1: 19,       // hueco de 6 m (un salto corto ya llega; uno largo no se pasa de largo)
   salto2: 33,       // hueco de 6 m (un poco más alta)
   enemigos: 50,     // hueco de 6 m → isla de los enemigos (orilla a 7 m, borde en 57)
-  dash1: 75,        // hueco de 14,5 m
-  canon: 102,       // hueco de 14,5 m → isla del cañón (orilla a 9 m, borde en 93)
-  boton: 96.5,      // entre el borde (93) y los muros (99)
+  dash1: 75,        // hueco de 14,5 m (isla chica: orilla a 3,5 m, borde en 78,5)
+  arena: 98.5,      // hueco de 6 m → Isla de la Arena (orilla a 14 m: de 84,5 a 112,5)
+  canon: 125.5,     // hueco de 6 m → isla del cañón (orilla a 7 m, borde en 118,5)
 };
 const DIR_CANON = camino(S.canon);
+const DIR_ARENA = camino(S.arena);
 const DIST_ICARO = 112;                 // Ícaro está "encima" del cañón, a esta distancia del centro
 
 export default {
@@ -59,27 +66,37 @@ export default {
   ],
 
   // islas: ancho = radio de lo que se ve sobre el agua; alto = cuánto asoma
+  // veg = cuánta vegetación lleva (js/vegetacion.js); si falta un número se calcula con el tamaño
   islas: [
-    { planeta: 0, dir: camino(S.flores), alto: 1.2, ancho: 9 },
-    { planeta: 0, dir: camino(S.salto1), alto: 1.3, ancho: 4 },
-    { planeta: 0, dir: camino(S.salto2), alto: 1.9, ancho: 4 },
-    { planeta: 0, dir: camino(S.enemigos), alto: 1.4, ancho: 7 },
-    { planeta: 0, dir: camino(S.dash1), alto: 1.4, ancho: 3.5 },
-    { planeta: 0, dir: DIR_CANON, alto: 1.6, ancho: 9, canon: true },
+    { planeta: 0, dir: camino(S.flores), alto: 1.2, ancho: 9, veg: { flores: 150, matas: 9, arboles: 5, claro: 4.5 } },
+    { planeta: 0, dir: camino(S.salto1), alto: 1.3, ancho: 4, veg: { arboles: 1 } },
+    { planeta: 0, dir: camino(S.salto2), alto: 1.9, ancho: 4, veg: { arboles: 1 } },
+    { planeta: 0, dir: camino(S.enemigos), alto: 1.4, ancho: 7, veg: { arboles: 3 } },
+    { planeta: 0, dir: camino(S.dash1), alto: 1.4, ancho: 3.5, veg: { matas: 1 } },
+    { planeta: 0, dir: DIR_ARENA, alto: 1.6, ancho: 14, veg: { arboles: 9, matas: 14, flores: 70, claro: 10.5 } },
+    { planeta: 0, dir: DIR_CANON, alto: 1.6, ancho: 7, canon: true, veg: { matas: 3 } },
   ],
+  // las islas están en el meridiano 180° (el plano x = 0): ahí no van árboles ni matas, para no tapar el camino
+  vegetacion: { planeta: 0, camino: new V3(1, 0, 0), seed: 7 },
 
   flores: { planeta: 0, dir: camino(S.flores) },
   canon: { planeta: 0, dir: DIR_CANON },
 
-  // muros alrededor del cañón: más altos que el salto máximo (v²/2g ≈ 14²/(2·25) ≈ 3,9 m)
-  muros: { planeta: 0, dir: DIR_CANON, lado: 3, alto: 5.5, grosor: 0.6 },
-  boton: { planeta: 0, dir: camino(S.boton) },
+  // campo de fuerza alrededor del cañón: más alto que el salto máximo (v²/2g ≈ 14²/(2·25) ≈ 3,9 m).
+  // Se apaga al ganarle al jefe (nivel.js escucha 'jefeVencido').
+  muros: { planeta: 0, dir: DIR_CANON, lado: 3, alto: 5.5, grosor: 0.6, estilo: 'campo' },
+
+  // ovni de Ícaro en órbita circular a 70 m del centro (pasa por encima del inicio)
+  ovni: { planeta: 0, radio: 70, normal: new V3(0.35, 0.3, 1).normalize(), empieza: new V3(0, 1, 0) },
+
+  // pelea del jefe (js/jefe.js): radio = metros de arena donde se pelea; entrada = checkpoint
+  jefe: { planeta: 0, dir: DIR_ARENA, radio: 12, entrada: camino(S.arena - 12.5), alturaOvni: 11 },
 
   // [tipo, planeta, dirección]
   enemigos: [
-    ['small', 0, camino(S.enemigos - 2, 2.5)],
-    ['small', 0, camino(S.enemigos + 2.5, -2)],
-    ['small', 0, camino(S.enemigos + 4, 2)],
+    ['alien', 0, camino(S.enemigos - 2, 2.5)],
+    ['alien', 0, camino(S.enemigos + 2.5, -2)],
+    ['alien', 0, camino(S.enemigos + 4, 2)],
   ],
 
   inicio: { planeta: 0, dir: camino(S.flores), mirar: new V3(0, 0, -1) },
@@ -105,7 +122,7 @@ export default {
     {
       planeta: 0, dir: camino(S.enemigos - 4.5, -2.5), icono: 'puno',
       paginas: [
-        'Cuidado: en esta isla hay criaturas.',
+        'Cuidado: esos gatos verdes son aliens de Ícaro. Bajaron del ovni que da vueltas al planeta.',
         'En el suelo, PUÑO (J) las golpea.\nTambién puedes caerles encima.',
       ],
     },
@@ -119,10 +136,20 @@ export default {
       ],
     },
     {
-      planeta: 0, dir: camino(95, 3), icono: 'pisoton',
+      planeta: 0, dir: camino(S.arena - 12.5, 3), icono: 'pisoton',
       paginas: [
-        'Unos muros protegen el cañón. Son más altos de lo que puedes saltar.',
-        'Párate en el botón, salta y, en el aire, toca PISOTÓN (J). Caes en picada con fuerza.',
+        'Isla de la Arena.\nEl ovni de Ícaro no te va a dejar pasar tan fácil.',
+        'En el aire, toca PISOTÓN (J): dejas de avanzar y caes en picada a 40 m/s.',
+        'El jefe tiene un casco duro. Saltarle encima, el puño o el dash no le hacen nada.',
+        'Cuando salte y caiga, queda mareado y abre el casco. Ahí, ¡pisotón!',
+        'Al caer suelta una onda que corre por el suelo. Si estás en el aire, pasa por debajo de ti.',
+      ],
+    },
+    {
+      planeta: 0, dir: camino(S.canon - 6, -2.5), icono: 'alien',
+      paginas: [
+        'Los aliens encerraron el cañón con un campo de fuerza. Es más alto de lo que puedes saltar.',
+        'Si le ganas al jefe de la arena, el campo se apaga.',
       ],
     },
     {

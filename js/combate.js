@@ -6,6 +6,9 @@
    - Dash: daño a chicos y medianos; el grande te rebota.
    - Cualquier otro contacto: el enemigo te quita vida
      (2 corazones si es el grande embistiendo).
+   - JEFE: solo el pisotón le hace daño (1), y solo si está
+     mareado (después de su salto). Todo lo demás rebota en
+     su casco.
    ========================================================= */
 import { V3, tangent } from './util.js';
 import { CFG } from './config.js';
@@ -30,6 +33,18 @@ export function stepContacts() {
     const above = _n.dot(e.up);                                // ¿estoy encima?
     const vrel = _t.copy(p.vel).sub(e.vel).dot(e.up);          // ¿voy bajando hacia él?
 
+    if (e.T.jefe && p.state === 'pound') {                     // pisotón al jefe
+      if (e.mareado) {
+        hurtEnemy(e, 1, _t.copy(e.up).multiplyScalar(-2), 0.4);
+        e.mareado = 0; e.golpeado = true;                       // jefe.js decide qué hace después
+        cam.shake = 0.6;
+      } else { e.flash = 0.1; cam.shake = 0.2; }                // ¡clanc! rebota en el casco cerrado
+      p.state = 'normal'; tangent(p.vel, p.vel, p.up);
+      tangent(_t, _n, p.up); if (_t.lengthSq() < 1e-4) _t.copy(p.facing).negate();
+      p.vel.addScaledVector(p.up, 13).addScaledVector(_t.normalize(), 6);   // sales rebotando hacia afuera
+      p.jumping = true; p.jumpCut = true; p.airDash = true;
+      p.pos.copy(e.pos).addScaledVector(_n, min); continue;
+    }
     if (p.state === 'pound') {                                 // pisotón directo
       hurtEnemy(e, 3, _t.copy(e.up).multiplyScalar(-3), 1.5);
       shockwave(_t2.copy(e.pos).addScaledVector(_n, e.r), p.up, e);
@@ -50,7 +65,7 @@ export function stepContacts() {
       p.pos.copy(e.pos).addScaledVector(_n, min); continue;
     }
     p.pos.copy(e.pos).addScaledVector(_n, min);
-    if (e.stun > 0) continue;                                  // aturdido = inofensivo
+    if (e.stun > 0 || e.mareado > 0) continue;                 // aturdido o mareado = inofensivo
     hurtPlayer(e.state === 'charge' ? 2 : 1, _n);
   }
 }

@@ -29,7 +29,11 @@ revisar('islas en el mismo lugar (±1 cm)', err < 0.01, `máx ${(err * 100).toFi
 revisar('mismos enemigos', vuelta.enemigos.length === columba.enemigos.length);
 revisar('mismos carteles y textos', vuelta.carteles.length === columba.carteles.length &&
   vuelta.carteles.every((c, i) => c.paginas.join() === columba.carteles[i].paginas.join()));
-revisar('cañón, botón, muros y flores', !!(vuelta.canon && vuelta.boton && vuelta.muros && vuelta.flores));
+revisar('cañón, muros y flores', !!(vuelta.canon && vuelta.muros && vuelta.flores));
+revisar('el botón solo si el nivel lo tiene', !!vuelta.boton === !!columba.boton);
+revisar('campo de fuerza, ovni, jefe y vegetación no se pierden', vuelta.muros.estilo === columba.muros.estilo &&
+  vuelta.ovni.radio === columba.ovni.radio && vuelta.jefe.radio === columba.jefe.radio &&
+  vuelta.jefe.dir.distanceTo(columba.jefe.dir) * 42 < 0.01 && vuelta.islas.every((s, i) => JSON.stringify(s.veg) === JSON.stringify(columba.islas[i].veg)));
 revisar('muros igual de altos', vuelta.muros.alto === columba.muros.alto);
 revisar('misma meta (aterrizar en Ícaro)', vuelta.meta.aterrizarEn === columba.meta.aterrizarEn);
 

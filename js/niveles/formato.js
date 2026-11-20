@@ -111,12 +111,12 @@ export function nivelDesdeEditor(n) {
     if (o.planeta >= planetas.length) continue;
     const dir = aV3(o.dir).normalize(), planeta = o.planeta;
     switch (o.tipo) {
-      case 'isla': def.islas.push({ planeta, dir, alto: o.alto, ancho: o.ancho }); break;
+      case 'isla': def.islas.push({ planeta, dir, alto: o.alto, ancho: o.ancho, ...(o.veg ? { veg: o.veg } : {}), ...(o.canon ? { canon: true } : {}) }); break;
       case 'roca': def.rocas.push({ planeta, dir, h: o.h, R: o.R }); break;
       case 'enemigo': def.enemigos.push([o.clase || 'small', planeta, dir]); break;
       case 'cartel': def.carteles.push({ planeta, dir, icono: o.icono || 'leer', paginas: (o.paginas || []).filter(Boolean).length ? o.paginas.filter(Boolean) : ['…'] }); break;
       case 'boton': def.boton = { planeta, dir }; break;
-      case 'muros': def.muros = { planeta, dir, lado: o.lado, alto: o.alto, grosor: o.grosor }; break;
+      case 'muros': def.muros = { planeta, dir, lado: o.lado, alto: o.alto, grosor: o.grosor, ...(o.estilo ? { estilo: o.estilo } : {}) }; break;
       case 'canon': def.canon = { planeta, dir }; break;
       case 'flores': def.flores = { planeta, dir }; break;
       case 'inicio': def.inicio = { planeta, dir, mirar: adelante(dir) }; break;
@@ -125,6 +125,11 @@ export function nivelDesdeEditor(n) {
     }
   }
   if (!def.inicio) def.inicio = { planeta: 0, dir: new V3(0, 1, 0), mirar: new V3(0, 0, -1) };
+  // extras que el editor todavía no dibuja, pero que no se pueden perder al ir y volver (ovni, jefe, vegetación)
+  const ex = n.extras || {};
+  if (ex.vegetacion) def.vegetacion = { ...ex.vegetacion, camino: ex.vegetacion.camino && aV3(ex.vegetacion.camino) };
+  if (ex.ovni) def.ovni = { ...ex.ovni, normal: aV3(ex.ovni.normal).normalize(), empieza: aV3(ex.ovni.empieza) };
+  if (ex.jefe) def.jefe = { ...ex.jefe, dir: aV3(ex.jefe.dir).normalize(), entrada: aV3(ex.jefe.entrada).normalize() };
   return def;
 }
 
@@ -146,12 +151,17 @@ export function editorDesdeNivel(def) {
     meta: def.meta ? { aterrizarEn: def.meta.aterrizarEn } : null,
   };
   const add = (tipo, o, extra = {}) => n.objetos.push({ tipo, planeta: o.planeta, dir: aArr(o.dir.clone().normalize()), ...extra });
-  for (const s of def.islas || []) add('isla', s, { alto: s.alto, ancho: s.ancho });
+  for (const s of def.islas || []) add('isla', s, { alto: s.alto, ancho: s.ancho, ...(s.veg ? { veg: s.veg } : {}), ...(s.canon ? { canon: true } : {}) });
   for (const r of def.rocas || []) add('roca', r, { R: r.R, h: r.h });
   for (const [clase, planeta, dir] of def.enemigos || []) add('enemigo', { planeta, dir }, { clase });
   for (const c of def.carteles || []) add('cartel', c, { icono: c.icono || 'leer', paginas: c.paginas || [c.texto || ''] });
   for (const k of ['boton', 'canon', 'flores', 'inicio']) if (def[k]) add(k, def[k]);
-  if (def.muros) add('muros', def.muros, { lado: def.muros.lado, alto: def.muros.alto, grosor: def.muros.grosor });
+  if (def.muros) add('muros', def.muros, { lado: def.muros.lado, alto: def.muros.alto, grosor: def.muros.grosor, ...(def.muros.estilo ? { estilo: def.muros.estilo } : {}) });
+  const extras = {};
+  if (def.vegetacion) extras.vegetacion = { ...def.vegetacion, camino: def.vegetacion.camino && aArr(def.vegetacion.camino) };
+  if (def.ovni) extras.ovni = { ...def.ovni, normal: aArr(def.ovni.normal), empieza: aArr(def.ovni.empieza) };
+  if (def.jefe) extras.jefe = { ...def.jefe, dir: aArr(def.jefe.dir), entrada: aArr(def.jefe.entrada) };
+  if (Object.keys(extras).length) n.extras = extras;
   if (def.fragmento) add('fragmento', def.fragmento, { h: def.fragmento.h || 1.4 });
   for (const t of def.notas || []) add('nota', t, { texto: t.texto, tam: t.tam });
   return n;

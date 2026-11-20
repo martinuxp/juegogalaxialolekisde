@@ -163,7 +163,7 @@ function moveInput(out) {
 
 /** Pone al jugador en el punto de inicio del nivel, con la vida llena. */
 export function respawnPlayer() {
-  const p = player, ini = juego.nivel.inicio;
+  const p = player, ini = juego.checkpoint || juego.nivel.inicio;   // checkpoint = entrada de la arena del jefe
   const P = mundo.planetas[ini.planeta];
   p.pos.copy(P.c).addScaledVector(ini.dir, superficieEn(P, ini.dir) + p.r + 0.02);
   p.vel.set(0, 0, 0); p.up.copy(ini.dir);
