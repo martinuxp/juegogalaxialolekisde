@@ -38,7 +38,9 @@ import './dialogo.js';
 import { actualizarAudio, _audio } from './audio.js';
 import { actualizarCineOvni } from './cineOvni.js';
 import { iniciarLlegada, actualizarCineIcaro, saltarCineIcaro, reanudarIcaro, _icaro } from './cineIcaro.js';
-import { NIVELES, LABORATORIO } from './niveles/index.js';
+import { NIVELES, LABORATORIO, SUPERFICIE_ICARO } from './niveles/index.js';
+import { iniciarSalidaSuperficie, actualizarCineSuperficie, saltarCineSuperficie, reanudarSuperficie, guardarParte } from './superficie.js';
+import { pm as _meowl } from './meowl.js';
 import { abrirEditor, frameEditor, conectarEditor, volverAlEditor, ed } from './editor/editor.js';
 
 window.__gameStarted = true;
@@ -53,7 +55,28 @@ function irAlMenu() {
   mostrarMenu(true);
 }
 
+/** Ícaro, parte 2: la superficie. conCine = recién saliste del laberinto (cinemática de llegada). */
+function irSuperficie(conCine) {
+  mostrarMenu(false);
+  jugadorALaPlaya(false);
+  cargarNivel(SUPERFICIE_ICARO);
+  if (conCine) {
+    guardarParte({ tramo: 0 });
+    $('saltarCine').classList.remove('oculto');
+    iniciarSalidaSuperficie(() => {
+      $('saltarCine').classList.add('oculto');
+      juego.modo = 'juego'; mostrarHUD(true); tituloNivel();
+    });
+  } else {
+    reanudarSuperficie();
+    juego.modo = 'juego'; mostrarHUD(true); tituloNivel();
+  }
+}
+escuchar('irSuperficie', () => irSuperficie(true));     // el laberinto de la cueva termina aquí (nivel2-icaro.js)
+
 function empezarNivel(i, conCine = false) {
+  const g = ajustes.guardado;
+  if (NIVELES[i].id === 'icaro' && g && g.nivel === 'icaro' && g.parte === 'superficie') { irSuperficie(false); return; }
   mostrarMenu(false);
   jugadorALaPlaya(false);
   cargarNivel(NIVELES[i]);
@@ -116,8 +139,8 @@ $('tMenu').onclick = () => ed.probando ? volverAlEditor() : irAlMenu();   // pro
 function editor() { mostrarMenu(false); jugadorALaPlaya(false); abrirEditor(); }
 $('mEditor').onclick = editor;
 conectarEditor(irAlMenu);
-$('saltarCine').onclick = () => saltarCineIcaro() || saltarDespertar();
-addEventListener('keydown', e => { if (juego.modo === 'cine' && (e.code === 'Escape' || e.code === 'Enter') && !(e.code === 'Enter' && _icaro.C.activo)) saltarCineIcaro() || saltarDespertar(); });
+$('saltarCine').onclick = () => saltarCineIcaro() || saltarCineSuperficie() || saltarDespertar();
+addEventListener('keydown', e => { if (juego.modo === 'cine' && (e.code === 'Escape' || e.code === 'Enter') && !(e.code === 'Enter' && _icaro.C.activo)) saltarCineIcaro() || saltarCineSuperficie() || saltarDespertar(); });
 
 /* ---------- HORIZONTAL OBLIGATORIO EN CELULAR ----------
    El navegador no deja girar la pantalla solo. Lo que sí podemos:
@@ -176,11 +199,12 @@ function frame(now) {
   updateEnemyVisuals(tiempo);
   stepFx(jugando ? dtv : 0);
   animarMundo(dt, tiempo);
+  if (juego.nivel && juego.nivel.alCuadro) juego.nivel.alCuadro(jugando || juego.modo === 'cine' ? dt : 0, tiempo);   // sol, Meowl, confeti...
   animarOvni(jugando ? dtv : (juego.modo === 'cine' ? dt : 0), tiempo);
   actualizarEscape(dt);
 
   const dtCine = vertical.matches ? 0 : dt;           // en vertical, la cinemática también espera
-  if (!actualizarDespertar(dtCine) && !actualizarCineOvni(dtCine) && !actualizarCineDespegue(dtCine) && !actualizarCineIcaro(dtCine)) updateCamera(dt);
+  if (!actualizarDespertar(dtCine) && !actualizarCineOvni(dtCine) && !actualizarCineDespegue(dtCine) && !actualizarCineIcaro(dtCine) && !actualizarCineSuperficie(dtCine)) updateCamera(dt);
   renderer.render(scene, camera);
   if (jugando) actualizarHUD(dt);
 }
@@ -201,4 +225,6 @@ window.__game = {
   columba: _depurar,
   editor: ed, abrirEditor: editor,
   icaro: _icaro,
+  superficie: (conCine = false) => { limpiarEntrada(); irSuperficie(conCine); },
+  meowl: _meowl,
 };

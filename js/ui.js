@@ -64,7 +64,8 @@ escuchar('jefe', info => {
   const el = $('jefeBarra');
   el.classList.toggle('oculto', !info);
   if (!info) { jefeHP = -1; return; }
-  if (!$('jefeIco').innerHTML) $('jefeIco').innerHTML = icono('alien', 1.8);
+  const ico = info.icono || 'alien';                  // Meowl tiene su propio ícono
+  if ($('jefeIco').dataset.ico !== ico) { $('jefeIco').innerHTML = icono(ico, 1.8); $('jefeIco').dataset.ico = ico; }
   jefeHP = info.hp;
   let s = '';
   for (let i = 0; i < info.max; i++) s += `<span class="${i < info.hp ? '' : 'off'}"></span>`;
@@ -94,7 +95,7 @@ function actualizarBarra() {
   const b = $('barra');
   b.classList.toggle('ver', escape.visible);
   if (!escape.visible) return;
-  const max = CFG.superMax;
+  const max = juego.superMax || CFG.superMax;          // el cañón de Ícaro carga más (nivel.js)
   $('barraLlena').style.width = (100 * Math.min(escape.v, max) / max) + '%';
   $('barraMarca').style.left = (100 * Math.min(escape.vesc, max) / max) + '%';
   $('barraV').textContent = `v = ${escape.v.toFixed(1)} m/s`;

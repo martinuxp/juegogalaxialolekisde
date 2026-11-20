@@ -49,8 +49,8 @@ function makeEnemy(kind, planetIdx, dir, altura = 0.05) {
   anyPerp(e.facing, dir);
   e.wanderDir.copy(e.facing);
 
-  if (T.gato) {                                         // gato-alien: dibujo en aliens.js
-    const a = crearGatoAlien(T.r, { jefe: !!T.jefe });
+  if (T.gato || T.modelo) {                             // gato-alien (aliens.js) o un dibujo propio (ej. meowlito, meowl.js)
+    const a = T.modelo ? T.modelo(T.r) : crearGatoAlien(T.r, { jefe: !!T.jefe });
     scene.add(a.g);
     const pips = new THREE.Group(); pips.position.y = T.r + (T.jefe ? 1.9 : 0.75); a.g.add(pips);
     for (let i = 0; i < T.hp; i++) { const pp = new THREE.Mesh(pipGeo, pipOn); pp.position.x = (i - (T.hp - 1) / 2) * 0.22; pips.add(pp); }

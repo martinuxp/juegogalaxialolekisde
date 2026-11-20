@@ -19,8 +19,9 @@
    personaje tiene su centro en z = −24.
    ========================================================= */
 import { V3 } from '../util.js';
+import { emitir } from '../estado.js';
 import { decorarCueva } from '../cueva.js';
-import { POZO, generarPozo, semillaDeLaUrl, construirPozo, actualizarPozo, reiniciarPozo, checkpointDeRepisa, punto } from '../pozo.js';
+import { POZO, generarPozo, semillaDeLaUrl, construirPozo, actualizarPozo, reiniciarPozo, checkpointDeRepisa, enemigosDelPozo } from '../pozo.js';
 
 const R = 2000;
 const C = new V3(0, -R, 0);              // el centro de la esfera: el suelo de la cueva queda en y ≈ 0
@@ -46,24 +47,13 @@ for (let i = 0; i < 12; i++) {
   if (dz < -0.75) continue;                                  // atrás: el pasillo hacia el pozo
   dunas.push(duna(SALA.x + dx * (SALA.r + A_SUELO), SALA.z + dz * (SALA.r + A_SUELO)));
 }
-// pasillo de la sala al POZO (10 m de ancho, de z = −34 a −42, donde empieza la pared del pozo)
+// pasillo de la sala al LABERINTO (10 m de ancho, de z = −34 a −42, donde está su puerta)
 for (const z of [-36, -41]) for (const sx of [-1, 1]) dunas.push(duna(sx * (5 + A_SUELO), z));
 // lomitas bajas en el suelo (se pueden pisar): centro 2 m bajo el suelo, asoman 1 m
 dunas.push(duna(2.4, -4, 3, -2), duna(-2.2, -9.5, 2.6, -1.7));
 
-/* EL POZO (js/pozo.js): procedural con semilla. ?semilla=123 en la dirección arma otro. */
+/* EL LABERINTO (js/pozo.js): procedural con semilla. ?semilla=123 en la dirección arma otro. */
 const pozo = generarPozo(semillaDeLaUrl());
-// enemigos: un gato-alien desde la 2ª repisa y dos desde la 4ª. Se quedan en su repisa (casa = 2 m).
-const enemigosPozo = [];
-pozo.repisas.forEach((rp, k) => {
-  if (k < 1) return;
-  const n = k >= 3 ? 2 : 1;
-  for (let j = 0; j < n; j++) {
-    const lado = n === 1 ? 0 : (j ? 1.3 : -1.3);
-    const p = punto(rp.x + lado, 0, rp.z);
-    enemigosPozo.push(['alien', 0, p.sub(new V3(0, -R, 0)).normalize(), rp.h, 2]);
-  }
-});
 
 const nivel = {
   id: 'icaro',
@@ -77,8 +67,8 @@ const nivel = {
   // niebla negra desde los 6 m y la linterna del casco prendida
   ambiente: { cielo: 0x6a5878, suelo: 0x0d0a0c, luzCielo: 0.16, sol: 0, fondo: 0x020103, niebla: [0x020103, 5, 20], estrellas: false, luzJugador: 5 },
   // adentro del pozo (pozo.js lo mezcla de a poco): luz fría que baja de la grieta, y más mientras más subes
-  ambientePozo: { cielo: 0x9fb4d8, suelo: 0x2a1a12, luzCielo: 0.32, luzArriba: 0.3, sol: 0.3, solArriba: 0.75, dirSol: [8, 100, -4],
-    fondo: 0x07060c, niebla: [0x0b0912, 9, 40], nieblaArriba: 30, estrellas: false, luzJugador: 4 },
+  ambientePozo: { cielo: 0xb8a088, suelo: 0x2a1a12, luzCielo: 0.2, luzArriba: 0.25, sol: 0.12, solArriba: 0.5, dirSol: [8, 100, -4],
+    fondo: 0x050307, niebla: [0x0a0710, 7, 26], nieblaArriba: 10, estrellas: false, luzJugador: 5.5 },
   // ECO (audio.js): todos los efectos rebotan en las paredes. pared = distancia típica (m) → el eco llega en 2·d/343 s
   eco: { mezcla: 0.45, cola: 2.6, pared: 18 },
 
@@ -89,19 +79,20 @@ const nivel = {
   rocas: dunas,
   decorado: (grupo, planetas) => {
     reiniciarPozo();
-    decorarCueva(grupo, planetas, { salida: [POZO.x + pozo.salida.x, POZO.z + pozo.salida.z], bocaAlto: pozo.salida.h + 14 });
+    decorarCueva(grupo, planetas, { salida: [POZO.x + pozo.salida.x, POZO.z + pozo.salida.z], bocaAlto: pozo.salida.h + 30, sinRayo: true });
     construirPozo(grupo, pozo);
   },
   pozo,
   checkpointRepisa: k => checkpointDeRepisa(pozo, k),
   alPaso: dt => actualizarPozo(dt, pozo, nivel),
+  alSalir: () => emitir('irSuperficie'),        // al salir por la grieta de arriba: la superficie (main.js)
 
   // la escena de la personaje (js/cineIcaro.js)
   sala: SALA,
   charla: { jugador: aqui(0, -15.5), personaje: aqui(0, -20.5), desde: aqui(0, -30), botas: aqui(-3.6, -21.5), activa: 12.5 },
 
   inicio: { planeta: 0, dir: aqui(0, 3), mirar: new V3(0, 0, -1) },
-  enemigos: enemigosPozo,
+  enemigos: enemigosDelPozo(pozo),
   carteles: [],
 };
 export default nivel;

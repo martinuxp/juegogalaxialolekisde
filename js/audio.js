@@ -98,7 +98,34 @@ const SONIDOS = {
   superCarga:   { archivo: 'super-carga.wav',   vol: 0.5 },
   superListo:   { archivo: 'super-listo.wav',   vol: 0.8 },
   superSalto:   { archivo: 'super-salto.wav',   vol: 0.75, tono: 0.04 },
-  // FALTA (si llega, se agrega aquí y ya suena): musicaMenu
+  // LABERINTO de la cueva (pozo.js): peligros y premios
+  estalactitaCruje: { archivo: 'estalactita-cruje.wav', vol: 0.6, tono: 0.08 },
+  estalactitaCae:   { archivo: 'estalactita-cae.wav',   vol: 0.5, tono: 0.08 },
+  estalactitaRompe: { archivo: 'estalactita-rompe.wav', vol: 0.85, tono: 0.08 },
+  fragilCruje:  { archivo: 'fragil-cruje.wav',  vol: 0.7, tono: 0.06 },
+  fragilCae:    { archivo: 'fragil-cae.wav',    vol: 0.8, tono: 0.06 },
+  corazon:      { archivo: 'corazon.wav',       vol: 0.6 },
+  rescate:      { archivo: 'rescate.wav',       vol: 0.6 },
+  // SUPERFICIE de Ícaro (superficie.js y meowl.js). desierto = viento: va como "música" hasta que muxp haga la del desierto
+  desierto:     { archivo: 'desierto-loop.wav', vol: 0.7, musica: true, loop: true, tarde: true },
+  quemadura:    { archivo: 'quemadura.wav',     vol: 0.8, tono: 0.08 },
+  salirGrieta:  { archivo: 'salir-grieta.wav',  vol: 0.85 },
+  meowlChilla:  { archivo: 'meowl-chilla.wav',  vol: 0.85 },
+  meowlCarga:   { archivo: 'meowl-carga.wav',   vol: 0.6 },
+  meowlPicada:  { archivo: 'meowl-picada.wav',  vol: 0.8 },
+  meowlClava:   { archivo: 'meowl-clava.wav',   vol: 0.9, tono: 0.05 },
+  meowlArrastre:{ archivo: 'meowl-arrastre.wav', vol: 0.75 },
+  meowlMareado: { archivo: 'meowl-mareado.wav', vol: 0.5 },
+  meowlGolpe:   { archivo: 'meowl-golpe.wav',   vol: 0.9 },
+  meowlVuela:   { archivo: 'meowl-vuela.wav',   vol: 0.6 },
+  meowlitoSale: { archivo: 'meowlito-sale.wav', vol: 0.55, tono: 0.12 },
+  meowlitoCarga:{ archivo: 'meowlito-carga.wav', vol: 0.45, tono: 0.1 },
+  meowlitoLanza:{ archivo: 'meowlito-lanza.wav', vol: 0.6, tono: 0.12 },
+  meowlitoMuere:{ archivo: 'meowlito-muere.wav', vol: 0.65, tono: 0.12 },
+  confeti:      { archivo: 'confeti.wav',       vol: 0.9 },
+  canonSube:    { archivo: 'canon-sube.wav',    vol: 0.85 },
+  canonListo:   { archivo: 'canon-listo.wav',   vol: 0.6 },
+  // FALTA (si llega, se agrega aquí y ya suena): musicaMenu, la música del desierto y la de Meowl
 };
 const PASOS = ['paso1', 'paso2', 'paso3'];
 const VOCES = ['voz1', 'voz2', 'voz3', 'voz4', 'voz5', 'voz6'];
@@ -469,6 +496,7 @@ escuchar('paginaCartel', () => sonar('pagina'));
 
 // enemigos (enemigos.js avisa en cada golpe)
 escuchar('golpeEnemigo', e => {
+  if (e.kind === 'meowlito') { if (e.dead) sonar('meowlitoMuere'); return; }
   if (!e.T.gato) return;
   if (e.dead && !e.T.jefe) sonar('alienMuere');
   else voz(e, 1);
@@ -561,3 +589,11 @@ for (const [id, clave] of [['pMusica', 'volMusica'], ['pEfectos', 'volEfectos']]
   r.addEventListener('change', () => { guardarAjustes(); if (clave === 'volEfectos') sonar('uiElegir'); });   // al soltar: guarda y te deja oír cómo quedó
 }
 pintarBotones();
+
+/* ---------- laberinto de la cueva (pozo.js) y superficie de Ícaro (superficie.js, meowl.js) ----------
+   Cada evento suena con el archivo del mismo nombre (ver la tabla SONIDOS). */
+for (const n of ['estalactitaCruje', 'estalactitaCae', 'estalactitaRompe', 'fragilCruje', 'fragilCae', 'corazon', 'rescate',
+  'quemadura', 'salirGrieta', 'meowlChilla', 'meowlCarga', 'meowlPicada', 'meowlClava', 'meowlArrastre', 'meowlMareado',
+  'meowlGolpe', 'meowlVuela', 'meowlitoSale', 'meowlitoCarga', 'meowlitoLanza', 'canonSube', 'canonListo'])
+  escuchar(n, () => sonar(n));
+escuchar('meowlConfeti', () => sonar('confeti'));

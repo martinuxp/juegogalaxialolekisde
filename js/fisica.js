@@ -250,5 +250,31 @@ export function superficieEn(P, dir) {
     const t = -b + Math.sqrt(disc);       // punto de salida
     if (t > mejor && t < P.R * 3) mejor = t;
   }
+  // cajas que son SUELO de este planeta (las mesas de roca de la superficie de Ícaro)
+  for (const m of mundo.muros) {
+    if (m.planeta !== P) continue;
+    const t = salidaDeCaja(P.c, dir, m);
+    if (t > mejor && t < P.R * 3) mejor = t;
+  }
   return mejor;
+}
+
+/**
+ * Rayo que parte en o con dirección d: ¿en qué distancia SALE de la caja m?
+ * (−1 si no la toca). Método de las "losas": en cada eje de la caja el rayo
+ * está adentro entre dos distancias; adentro de la caja = adentro de las 3 a la vez.
+ */
+export function salidaDeCaja(o, d, m) { return cruceCaja(o, d, m)[1]; }
+/** ¿En qué distancia ENTRA el rayo a la caja? (−1 si no la toca o si el origen ya está adentro). */
+export function entradaACaja(o, d, m) { const [a, b] = cruceCaja(o, d, m); return b >= 0 && a >= 0 ? a : -1; }
+function cruceCaja(o, d, m) {
+  let tMin = -Infinity, tMax = Infinity;
+  for (const [eje, h] of [[m.x, m.medio.x], [m.y, m.medio.y], [m.z, m.medio.z]]) {
+    const oo = (o.x - m.c.x) * eje.x + (o.y - m.c.y) * eje.y + (o.z - m.c.z) * eje.z;
+    const dd = d.x * eje.x + d.y * eje.y + d.z * eje.z;
+    if (Math.abs(dd) < 1e-9) { if (Math.abs(oo) > h) return [-1, -1]; continue; }
+    const t1 = (-h - oo) / dd, t2 = (h - oo) / dd;
+    tMin = Math.max(tMin, Math.min(t1, t2)); tMax = Math.min(tMax, Math.max(t1, t2));
+  }
+  return tMax >= Math.max(tMin, 0) ? [tMin, tMax] : [-1, -1];
 }

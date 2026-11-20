@@ -51,7 +51,7 @@ export function stepContacts() {
       p.state = 'normal'; tangent(p.vel, p.vel, p.up); p.vel.addScaledVector(p.up, 12); p.jumping = true; p.jumpCut = true;
       p.pos.copy(e.pos).addScaledVector(_n, min); cam.shake = 0.35; continue;
     }
-    if (above > 0.5 && vrel < 0.5) {                           // caer encima → rebote
+    if (above > 0.5 && vrel < 0.5 && !p.grounded) {           // caer encima → rebote (desde el aire: parado al lado no cuenta)
       if (e.T.stomp > 0) hurtEnemy(e, e.T.stomp, _t.copy(e.up).multiplyScalar(-2), 0.8); else e.flash = 0.08;
       if (p.state === 'dash' || p.state === 'poundWind') p.state = 'normal';
       tangent(p.vel, p.vel, p.up); p.vel.addScaledVector(p.up, input.jumpHeld ? CFG.stompHeld : CFG.stomp);

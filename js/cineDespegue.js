@@ -151,6 +151,7 @@ function tarjetasDelNivel() {
   const h = CFG.jump * CFG.jump / (2 * g);
   const boca = piezas.canon ? piezas.canon.userData.boca.distanceTo(P.c) : rSuelo + 1.7;
   const vesc = velocidadEscape(P, boca);
+  if (def.tarjetas) return def.tarjetas({ P, gm, g, vesc, vDespegue, f1, f0 });   // el nivel trae sus propias fórmulas
   const t = [];
   t.push({ tipo: 'formula', titulo: 'Gravitación de Newton', formula: 'g = G·M / r²',
     texto: `En ${P.name}, G·M = g₀·R² = ${f0(gm)} m³/s². Parado en una isla, g ≈ ${f1(g)} m/s²: ${f1(g / 9.8)} veces la de la Tierra.` });

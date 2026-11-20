@@ -22,7 +22,7 @@ import { THREE, V3, clamp, damp, tangent, anyPerp, moveTowards, rng } from './ut
 import { scene, toon, outline, orient, faceNormal, camera, ambienteActual } from './escena.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { CFG } from './config.js';
-import { makeBody, computeGravity, updateUp, collide, mundo, superficieEn } from './fisica.js';
+import { makeBody, computeGravity, updateUp, collide, mundo, superficieEn, entradaACaja } from './fisica.js';
 import { input, keys } from './entrada.js';
 import { juego, ajustes, emitir, escuchar } from './estado.js';
 import { hurtEnemy } from './enemigos.js';
@@ -206,7 +206,7 @@ export function respawnPlayer() {
   p.vel.set(0, 0, 0); p.up.copy(ini.dir);
   tangent(p.facing, ini.mirar, ini.dir).normalize();
   p.hp = p.maxHP; p.state = 'normal'; p.invul = 2; p.carga = 0;
-  p.voidT = 0; p.launch = null; p.fijo = null;
+  p.voidT = 0; p.launch = null; p.fijo = null; p.guiado = null;
   p.seguro.copy(p.pos);
   computeGravity(p);
   cam.fwd.copy(p.facing); cam.up.copy(p.up);
@@ -221,6 +221,7 @@ export function stepPlayer(dt) {
   computeGravity(p);
   if (p.state === 'dormido') return;                 // cinemática del despertar
   if (p.state === 'launch') { stepLaunch(dt); return; }
+  if (p.state === 'guiado') { updateUp(p, dt); if (p.guiado) p.guiado(dt); else p.state = 'normal'; return; }   // movido por una fórmula (salto del susto, superficie.js)
   if (p.state === 'vuelo') { pasoVuelo(p, dt); revisarVacio(dt); return; }
   if (p.state === 'carga') { pasoCarga(p, dt); return; }
   updateUp(p, dt);
@@ -352,7 +353,8 @@ export function stepPlayer(dt) {
   const P = p.planet;
   if (P && P.mar) {
     const r = p.pos.distanceTo(P.c);
-    if (r < P.mar + 0.05) {
+    if (r < P.mar + 0.05 && P.quema && juego.nivel.quemar) juego.nivel.quemar(p);   // arena hirviendo de Ícaro (superficie.js)
+    else if (r < P.mar + 0.05) {
       const lava = P.base === 'lava';                  // la lava además quita un corazón
       if (lava) { p.invul = 0; hurtPlayer(1, p.up); }
       p.pos.copy(p.seguro); p.vel.set(0, 0, 0); p.state = 'normal'; p.invul = Math.max(p.invul, 0.8);
@@ -431,7 +433,18 @@ function rayHit(origin, dir) {   // raycast de la sombra hacia el centro del pla
     if (c > 0 && b > 0) continue; const disc = b * b - c; if (disc < 0) continue;
     const tt = Math.max(0, -b - Math.sqrt(disc)); if (tt < best) { best = tt; hitS = s; }
   }
-  return hitS ? { t: best, s: hitS } : null;
+  let n = null;
+  // la arena hirviendo de Ícaro no es sólida, pero la sombra sí cae sobre ella (si no, no sabrías dónde vas a caer)
+  for (const s of mundo.planetas) if (s.quema) {
+    _t.copy(origin).sub(s.c); const b = _t.dot(dir), c = _t.lengthSq() - s.mar * s.mar, disc = b * b - c;
+    if (disc >= 0 && c > 0 && b < 0) { const tt = -b - Math.sqrt(disc); if (tt < best) { best = tt; hitS = s; } }
+  }
+  // cajas (rocas de la superficie, el laberinto): la sombra cae en su cara de arriba
+  for (const m of mundo.muros) {
+    const tt = entradaACaja(origin, dir, m);
+    if (tt >= 0 && tt < best) { best = tt; hitS = m; n = m.y; }
+  }
+  return hitS ? { t: best, s: hitS, n } : null;
 }
 
 export function updatePlayerVisuals(dt, elapsed) {
@@ -446,7 +459,7 @@ export function updatePlayerVisuals(dt, elapsed) {
   if (p.state === 'poundWind') pl.body.rotation.x = (p.t / CFG.poundWind) * Math.PI * 2;
   if (p.state === 'pound') { sx = 0.85; sy = 1.25; sz = 0.85; }
   if (p.state === 'carga') {   // se agacha y tiembla más mientras más carga
-    const k = clamp(p.carga / CFG.superMax, 0, 1);
+    const k = clamp(p.carga / (juego.superMax || CFG.superMax), 0, 1);
     sy = 1 - 0.3 * k; sx = sz = 1 + 0.18 * k;
     pl.body.position.x = Math.sin(elapsed * 60) * 0.03 * k;
   } else pl.body.position.x = 0;
@@ -484,7 +497,8 @@ export function updatePlayerVisuals(dt, elapsed) {
   } else pl.destello.visible = false;
   const h = rayHit(p.pos, p.gdir);
   if (h && p.state !== 'launch') {
-    _sp.copy(p.pos).addScaledVector(p.gdir, h.t); _sn.copy(_sp).sub(h.s.c).normalize();
+    _sp.copy(p.pos).addScaledVector(p.gdir, h.t);
+    if (h.n) _sn.copy(h.n); else _sn.copy(_sp).sub(h.s.c).normalize();
     pl.shadow.position.copy(_sp).addScaledVector(_sn, 0.03); faceNormal(pl.shadow, _sn);
     const k = clamp(1 - h.t / 12, 0.25, 1); pl.shadow.scale.setScalar(k); pl.shadow.material.opacity = 0.45 * k; pl.shadow.visible = true;
   } else pl.shadow.visible = false;

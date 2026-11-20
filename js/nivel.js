@@ -34,14 +34,18 @@ export function cargarNivel(def) {
   aplicarAmbiente(def.ambiente);      // luz, fondo y niebla del nivel (escena.js)
   construirMundo(def);
   spawnEnemies(def.enemigos || []);
+  if (def.alListo) def.alListo();     // el nivel termina de prepararse con el mundo ya armado (ej. Meowl esconde el cañón)
   if (def.ovni) crearOvniNivel(def.ovni); else limpiarOvni();
   prepararJefe(def);
 
   player.maxHP = def.laboratorio ? CFG.maxHP : DIFICULTADES[ajustes.dificultad].corazones;
-  player.tieneSuper = !!def.superDesdeInicio;
+  player.tieneSuper = !!def.superDesdeInicio || !!def.botas;
+  // el cañón del nivel: cuánta velocidad alcanza a cargar (Ícaro es 10 veces Columba: v_esc ≈ 123 m/s)
+  juego.superMax = (def.canon && def.canon.max) || CFG.superMax;
+  juego.superRitmo = (def.canon && def.canon.ritmo) || CFG.superRitmo;
   player.acostado = 0; player.ojos = 1;
   mostrarLunita(!!def.laboratorio);
-  mostrarBotas(false);   // la lunita del casco aparece al tomar un fragmento
+  mostrarBotas(!!def.botas);   // la superficie de Ícaro parte con las botas puestas
   progreso.paso = def.laboratorio ? 'libre' : 'jugar';
   progreso.tiempo = 0;
   progreso.avisoCanon = false;
@@ -113,8 +117,8 @@ export function stepNivel(dt) {
       m.mesh.position.copy(m.solido.c);
     }
     if (progreso.murosT >= 1) {
-      // ya bajaron: los sacamos de la física
-      mundo.muros.length = 0;
+      // ya bajaron: los sacamos de la física (solo ESTOS muros: el resto del nivel también usa cajas)
+      for (const m of piezas.muros) { const i = mundo.muros.indexOf(m.solido); if (i >= 0) mundo.muros.splice(i, 1); }
       for (const m of piezas.muros) m.mesh.visible = false;
     }
   }
@@ -145,7 +149,7 @@ escuchar('pisoton', pos => {
 
 // le ganaste al jefe: el campo de fuerza del cañón se apaga (baja igual que los muros)
 escuchar('jefeVencido', () => {
-  if (progreso.murosT < 0) progreso.murosT = 0;
+  if (progreso.murosT < 0 && piezas.muros.length) progreso.murosT = 0;
 });
 
 /** Lo llama la pantalla de carga al terminar (cineDespegue.js): el nivel queda completo. */

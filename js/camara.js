@@ -17,8 +17,12 @@ export const cam = {
   fwd: new V3(0, 0, -1), up: new V3(0, 1, 0),
   pitch: 0.42, dist: 8.5, distActual: 8.5,
   pos: new V3(0, 30, 20), look: new V3(), shake: 0,
+  // lugares con techo bajo (el laberinto de Ícaro): { dist, pitch } máximos. null = sin límite.
+  limite: null, pitchLim: 1.25,
+  // algo que conviene ver (Meowl en su rama): la mirada se inclina un poco hacia ahí. null = nada.
+  foco: null,
 };
-const _c1 = new V3(), _c2 = new V3();
+const _c1 = new V3(), _c2 = new V3(), _c3 = new V3(), _c4 = new V3();
 
 export function updateCamera(dt) {
   const p = juego.jugador;
@@ -39,13 +43,23 @@ export function updateCamera(dt) {
     const altura = p.pos.distanceTo(p.planet.c) - p.planet.R;
     objetivo = 16 + clamp(altura * 0.5, 0, 30);
   }
+  if (cam.limite) objetivo = Math.min(objetivo, cam.limite.dist);
   cam.distActual += (objetivo - cam.distActual) * damp(2.5, dt);
+  // con techo bajo, la cámara baja (menos ángulo) para no quedar pegada al techo
+  cam.pitchLim += ((cam.limite ? cam.limite.pitch : 1.25) - cam.pitchLim) * damp(3, dt);
+  const pitch = Math.min(cam.pitch, cam.pitchLim);
 
   const target = _c1.copy(p.pos).addScaledVector(cam.up, 1.0);
   const d = cam.distActual;
-  const want = _c2.copy(target).addScaledVector(cam.fwd, -Math.cos(cam.pitch) * d).addScaledVector(cam.up, Math.sin(cam.pitch) * d);
+  // FOCO: si está adelante de la cámara, miramos un punto entre el jugador y el foco (y nos alejamos un poco)
+  let mirar = target;
+  if (cam.foco) {
+    _c3.copy(cam.foco).sub(target);
+    if (_c3.dot(cam.fwd) > 0) { mirar = _c4.copy(target).addScaledVector(_c3, 0.35); cam.distActual += (11 - cam.distActual) * damp(1.5, dt); }
+  }
+  const want = _c2.copy(target).addScaledVector(cam.fwd, -Math.cos(pitch) * d).addScaledVector(cam.up, Math.sin(pitch) * d);
   cam.pos.lerp(want, damp(volando ? 4 : 10, dt));
-  cam.look.lerp(target, damp(16, dt));
+  cam.look.lerp(mirar, damp(cam.foco ? 6 : 16, dt));
   camera.position.copy(cam.pos);
   noAtravesar(target, dt);
   if (cam.shake > 0) {
@@ -74,46 +88,59 @@ export function updateCamera(dt) {
    --------------------------------------------------------- */
 const _rd = new V3(), _ro = new V3();
 let distLibre = Infinity;
-function noAtravesar(target, dt) {
-  _rd.copy(camera.position).sub(target);
-  const L = _rd.length();
-  if (L < 1e-3) return;
-  _rd.divideScalar(L);
+const _alt = new V3(), _upc = new V3();
+/** ¿Cuánto puede avanzar un rayo desde o en la dirección d (unitaria) antes de chocar? (máximo L) */
+function rayoLibre(o, d, L) {
   let tMin = L;
   for (const s of mundo.solidos) {
-    _ro.copy(target).sub(s.c);
-    const b = _ro.dot(_rd), c = _ro.lengthSq() - s.R * s.R;
+    _ro.copy(o).sub(s.c);
+    const b = _ro.dot(d), c = _ro.lengthSq() - s.R * s.R;
     if (c < 0) continue;                      // el jugador está "dentro" (no pasa): no la contamos
     const disc = b * b - c;
     if (disc < 0) continue;
     const t = -b - Math.sqrt(disc);
     if (t > 0 && t < tMin) tMin = t;
   }
-  // CAJAS (muros y repisas del pozo): método de las "placas". En los ejes de la caja,
+  // CAJAS (muros, suelos y paredes del laberinto): método de las "placas". En los ejes de la caja,
   // el rayo entra a cada par de caras paralelas en un t y sale en otro; el rayo está
   // DENTRO de la caja donde los 3 intervalos se cruzan: desde el mayor "entra" hasta el menor "sale".
   for (const m of mundo.muros) {
-    _ro.copy(target).sub(m.c);
+    _ro.copy(o).sub(m.c);
     let entra = -Infinity, sale = Infinity;
     for (const [eje, h] of [[m.x, m.medio.x], [m.y, m.medio.y], [m.z, m.medio.z]]) {
-      const o = _ro.dot(eje), d = _rd.dot(eje);
-      if (Math.abs(d) < 1e-9) { if (Math.abs(o) > h) { entra = Infinity; break; } continue; }
-      let t1 = (-h - o) / d, t2 = (h - o) / d;
+      const oo = _ro.dot(eje), dd = d.dot(eje);
+      if (Math.abs(dd) < 1e-9) { if (Math.abs(oo) > h) { entra = Infinity; break; } continue; }
+      let t1 = (-h - oo) / dd, t2 = (h - oo) / dd;
       if (t1 > t2) [t1, t2] = [t2, t1];
       entra = Math.max(entra, t1); sale = Math.min(sale, t2);
     }
     if (entra <= sale && entra > 0 && entra < tMin) tMin = entra;
   }
+  return tMin;
+}
+function noAtravesar(target, dt) {
+  _rd.copy(camera.position).sub(target);
+  const L = _rd.length();
+  if (L < 1e-3) return;
+  _rd.divideScalar(L);
+  let tMin = rayoLibre(target, _rd, L);
+  // ¿Una pared justo detrás? Probamos subir la cámara (mirando más hacia abajo): en un pasillo
+  // con pared atrás, desde arriba se ve mejor que pegado a la nuca del personaje.
+  if (tMin < 2.2 && L > 2.2) {
+    _alt.copy(_rd).addScaledVector(_upc.copy(cam.up), 1.4).normalize();
+    const tAlt = rayoLibre(target, _alt, L);
+    if (tAlt > tMin + 0.6) { _rd.copy(_alt); tMin = tAlt; }
+  }
   const libre = tMin < L ? Math.max(0.6, tMin - 0.4) : L;
   if (!isFinite(distLibre)) distLibre = libre;
   distLibre = libre < distLibre ? libre : distLibre + (libre - distLibre) * damp(3, dt);
-  if (distLibre < L - 1e-3) camera.position.copy(target).addScaledVector(_rd, distLibre);
+  if (distLibre < L - 1e-3 || tMin < L) camera.position.copy(target).addScaledVector(_rd, Math.min(distLibre, L));
 }
 
 /** Pone la cámara detrás del jugador de golpe (al empezar un nivel). */
 export function camaraAlInicio() {
   const p = juego.jugador;
-  cam.up.copy(p.up); cam.fwd.copy(p.facing); cam.distActual = cam.dist;
+  cam.up.copy(p.up); cam.fwd.copy(p.facing); cam.distActual = cam.dist; cam.limite = null; cam.pitchLim = 1.25;
   cam.pos.copy(p.pos).addScaledVector(cam.fwd, -6).addScaledVector(cam.up, 4);
   cam.look.copy(p.pos);
 }
