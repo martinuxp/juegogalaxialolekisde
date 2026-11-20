@@ -15,7 +15,7 @@
 import { THREE, V3, damp, tangent, anyPerp, clamp } from './util.js';
 import { scene, toon, outline, orient } from './escena.js';
 import { makeBody, computeGravity, updateUp, collide, mundo, superficieEn } from './fisica.js';
-import { juego } from './estado.js';
+import { juego, emitir } from './estado.js';
 import { crearGatoAlien } from './aliens.js';
 
 export const ETYPES = {
@@ -102,6 +102,7 @@ export function hurtEnemy(e, dmg, knock, stun) {
   e.vel.copy(knock).divideScalar(Math.sqrt(e.T.mass));   // los pesados salen menos volando
   e.mesh.pips.children.forEach((pp, i) => pp.material = i < e.hp ? pipOn : pipOff);
   if (e.hp <= 0) { e.dead = true; e.dieT = 0.3; }
+  emitir('golpeEnemigo', e);                             // audio.js: voz o sonido de derrota
 }
 
 const _w = new V3(), _eh = new V3(), _toP = new V3(), _t = new V3(), _prev = new V3();

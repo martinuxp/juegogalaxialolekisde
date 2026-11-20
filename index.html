@@ -30,6 +30,7 @@
       <button class="tb" id="tGrav" title="Multiplicador de gravedad"><span data-icono="gravedad"></span><span class="val">g×1.0</span></button>
       <button class="tb lab" id="tTime" title="Cámara lenta"><span data-icono="tiempo"></span><span class="val">1x</span></button>
       <button class="tb lab" id="tEnem" title="Reaparecer enemigos" data-icono="enemigos"></button>
+      <button class="tb" id="tSonido" title="Sonido (M)"></button>
       <button class="tb" id="tCam" title="Centrar cámara (Tab)" data-icono="camara"></button>
       <button class="tb" id="tDbg" title="Panel de física" data-icono="debug"></button>
     </div>
@@ -65,6 +66,7 @@
 
 <!-- ============ MENÚ INICIAL ============ -->
 <div id="menu" class="oculto">
+  <button class="tb" id="mSonido" title="Sonido (M)"></button>
   <div class="titulo">
     <h1>Alma Lunar</h1>
     <p id="menuSub">Columba se está quedando sin mar.</p>
@@ -90,6 +92,8 @@
     <div class="opt"><span>Traje</span><div id="pTrajes" class="swatches"></div></div>
     <div class="opt"><span>Casco</span><button class="mb chico" id="pAcc"></button></div>
     <div class="opt"><span>Dificultad</span><div id="pDif" class="seg"></div></div>
+    <div class="opt vol"><span>Música</span><input type="range" id="pMusica" min="0" max="1" step="0.05">
+      <span>Efectos</span><input type="range" id="pEfectos" min="0" max="1" step="0.05"></div>
     <button class="mb principal" id="pListo">Listo</button>
   </div>
 </div>
