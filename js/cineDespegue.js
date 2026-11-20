@@ -221,7 +221,7 @@ function pintarTarjeta() {
   el.classList.remove('entra'); void el.offsetWidth; el.classList.add('entra');
   [...$('cgPuntos').children].forEach((s, i) => s.classList.toggle('on', i === actual));
 }
-function siguienteTarjeta(paso = 1) { actual = (actual + paso + tarjetas.length) % tarjetas.length; rotaT = 0; pintarTarjeta(); }
+function siguienteTarjeta(paso = 1) { actual = (actual + paso + tarjetas.length) % tarjetas.length; rotaT = 0; pintarTarjeta(); emitir('cargaTarjeta'); }
 
 let ultimo = 0;
 function tickCarga(now) {
@@ -229,7 +229,7 @@ function tickCarga(now) {
   const dt = ultimo ? Math.min(0.1, (now - ultimo) / 1000) : 0; ultimo = now;
   tCarga += dt; rotaT += dt;
   $('cgLlena').style.width = Math.min(100, 100 * tCarga / DUR_CARGA) + '%';
-  if (!listo && tCarga >= DUR_CARGA) { listo = true; $('cgSeguir').classList.remove('oculto'); }
+  if (!listo && tCarga >= DUR_CARGA) { listo = true; $('cgSeguir').classList.remove('oculto'); emitir('cargaLista'); }
   if (rotaT >= ROTA) siguienteTarjeta();
   requestAnimationFrame(tickCarga);
 }
@@ -238,6 +238,7 @@ function seguir() {
   if (!listo) return;
   cargando = false; ultimo = 0;
   $('carga').classList.add('oculto');
+  emitir('cargaFin');
   completarNivel();                                   // nivel.js: guarda el avance y abre la tarjeta de nivel completo
   setTimeout(() => $('fundido').classList.remove('ver'), 1300);
 }

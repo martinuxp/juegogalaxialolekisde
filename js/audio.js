@@ -65,8 +65,23 @@ const SONIDOS = {
   ovniBoing:    { archivo: 'ovni-boing.wav',    vol: 0.7 },
   ovniRayo:     { archivo: 'ovni-rayo.wav',     vol: 0.45, tono: 0.06 },
   ovniHuye:     { archivo: 'ovni-huida.wav',    vol: 0.7 },
-  // FALTAN (si llegan, se agregan aquí y ya suenan): salto, puno, musicaMenu
+  // JUGADOR (también generados con herramientas/generar-sonidos.py)
+  salto:        { archivo: 'salto.wav',         vol: 0.45, tono: 0.06 },
+  paso1:        { archivo: 'paso1.wav',         vol: 0.35, tono: 0.1 },
+  paso2:        { archivo: 'paso2.wav',         vol: 0.35, tono: 0.1 },
+  paso3:        { archivo: 'paso3.wav',         vol: 0.35, tono: 0.1 },
+  puno:         { archivo: 'puno.wav',          vol: 0.6,  tono: 0.1 },
+  tocaSuelo:    { archivo: 'tocar-suelo.wav',   vol: 0.6,  tono: 0.08 },
+  chapuzon:     { archivo: 'chapuzon.wav',      vol: 0.7,  tono: 0.05 },
+  // ESPACIO: despegue a otro planeta y pantalla de carga
+  despegueRugido: { archivo: 'despegue-rugido.wav', vol: 0.9 },
+  espacio:      { archivo: 'espacio-loop.wav',  vol: 0.9, musica: true, loop: true },
+  cargaTarjeta: { archivo: 'carga-tarjeta.wav', vol: 0.35, tono: 0.03 },
+  cargaLista:   { archivo: 'carga-lista.wav',   vol: 0.55 },
+  nivelCompleto:{ archivo: 'nivel-completo.wav', vol: 0.7 },
+  // FALTA (si llega, se agrega aquí y ya suena): musicaMenu
 };
+const PASOS = ['paso1', 'paso2', 'paso3'];
 const VOCES = ['voz1', 'voz2', 'voz3', 'voz4', 'voz5', 'voz6'];
 
 /* ---------- volúmenes guardados (estado.js los guarda en localStorage) ---------- */
@@ -206,12 +221,12 @@ escuchar('jefeVencido', () => { callarTema(0.15); sonar('jefeSalida'); });
    Al ganar, la música del planeta vuelve cuando termina el
    fadeout del jefe. Si pierdes, vuelve de inmediato.
    ========================================================= */
-const fondo = { nombre: null, h: null, zona: 'calma', calmaDesde: 0, tension: null };
+const fondo = { nombre: null, h: null, zona: 'calma', calmaDesde: 0, tension: null, espacio: null };
 function callarTension(seg) { apagar(fondo.tension, seg); fondo.tension = null; }
 function calma(desde = 0) { fondo.zona = 'calma'; fondo.calmaDesde = desde; callarTension(0.8); }
 
 escuchar('nivel', def => {
-  callarTema(0.3); calma();
+  callarTema(0.3); calma(); salirDelEspacio(0.5);
   if (fondo.nombre !== (def.musica || null)) { apagar(fondo.h, 0.3); fondo.h = null; }
   fondo.nombre = def.musica || null;
 });
@@ -233,7 +248,7 @@ escuchar('ovniHuye', () => sonar('ovniHuye'));
 /** Cada cuadro: ¿debería sonar la música del planeta? Si sí y no suena, entra suave; si no, sale suave. */
 function dirigirFondo() {
   const jugando = ['juego', 'cartel', 'cine'].includes(juego.modo);
-  const quiere = jugando && fondo.nombre && fondo.zona === 'calma' && ctx.currentTime >= fondo.calmaDesde;
+  const quiere = jugando && !fondo.espacio && fondo.nombre && fondo.zona === 'calma' && ctx.currentTime >= fondo.calmaDesde;
   if (quiere && !fondo.h) fondo.h = sonar(fondo.nombre, { subir: 2.5 });
   if (!quiere && fondo.h) { apagar(fondo.h, 1.5); fondo.h = null; }
   if (!jugando && fondo.tension) callarTension(0.5);
@@ -251,6 +266,38 @@ escuchar('reaparecer', motivo => { if (motivo === 'vida') sonar('sinVidas'); });
 let vuelo = null;
 escuchar('despegue', () => { sonar('canonDisparo'); apagar(vuelo); vuelo = sonar('canonVuelo'); });
 escuchar('aterrizaje', () => { apagar(vuelo, 0.4); vuelo = null; });
+
+/* =========================================================
+   VIAJE AL ESPACIO (cineDespegue.js)
+   ---------------------------------------------------------
+   Escapaste: el silbido del cañón se corta, ruge el despegue
+   (que se va poniendo grave: efecto Doppler, algo que se aleja
+   suena más grave) y entra la música ambiente del espacio, que
+   sigue en la pantalla de carga hasta que aprietas Seguir.
+   ========================================================= */
+function salirDelEspacio(seg) { apagar(fondo.espacio, seg); fondo.espacio = null; }
+escuchar('cineDespegue', () => {
+  apagar(vuelo, 0.6); vuelo = null;
+  apagar(fondo.h, 1.2); fondo.h = null;                 // la música del planeta se despide
+  sonar('despegueRugido');
+  if (!fondo.espacio) fondo.espacio = sonar('espacio', { subir: 3 });
+});
+escuchar('cargaTarjeta', () => sonar('cargaTarjeta'));
+escuchar('cargaLista', () => sonar('cargaLista'));
+escuchar('cargaFin', () => salirDelEspacio(2.5));
+escuchar('completo', () => sonar('nivelCompleto'));
+
+// jugador: salto, puño, caer al suelo y al agua (los pasos van en actualizarAudio)
+escuchar('salto', () => sonar('salto'));
+escuchar('puno', () => sonar('puno'));
+// fuerza = rapidez con que caías (m/s). Caer de un salto normal ≈ 14 m/s.
+// Bajo 3 m/s es un escaloncito: no suena. Más rápido, más fuerte (hasta 1).
+escuchar('tocaSuelo', v => {
+  if (v < 3) return;
+  sonar('tocaSuelo', { vol: Math.min(1, 0.35 + v / 25) });
+  zancada = 0;                                          // el próximo paso, una zancada después de caer
+});
+escuchar('agua', () => sonar('chapuzon'));
 
 // carteles
 escuchar('leer', () => sonar('cartel'));
@@ -280,7 +327,9 @@ export function actualizarAudio(dt) {
   musica.gain.setTargetAtTime(ajustes.volMusica * (juego.modo === 'cartel' ? 0.4 : 1), ctx.currentTime, 0.2);
   if ((tema.loop || tema.entrada) && !['juego', 'cartel', 'cine'].includes(juego.modo)) callarTema(0.5);   // volviste al menú
   dirigirFondo();
+  if (fondo.espacio && !['cine', 'carga'].includes(juego.modo)) salirDelEspacio(1);     // por si saliste a medias
   if (juego.modo !== 'juego' || !juego.jugador) return;
+  pasos(dt);
   charla -= dt;
   if (charla > 0) return;
   charla = 2 + Math.random() * 3;                           // la próxima, en 2 a 5 s
@@ -291,6 +340,24 @@ export function actualizarAudio(dt) {
     if (d < dmin) { dmin = d; cerca = e; }
   }
   if (cerca) voz(cerca, 1 - dmin / OIDO);
+}
+
+/* ---------- PASOS ----------
+   Un paso cada vez que recorres una "zancada" (1,9 m) por el suelo:
+     pasos por segundo = rapidez / zancada
+   Corriendo a 9 m/s → ~4,7 pasos/s; caminando lento, menos. Así el
+   ritmo de los pasos sale solo de la física, sin contar cuadros. */
+const ZANCADA = 1.9;
+let zancada = 0;
+function pasos(dt) {
+  const p = juego.jugador;
+  if (!p.grounded || (p.state !== 'normal' && p.state !== 'punch')) { zancada = ZANCADA * 0.6; return; }
+  const v = p.vel.length();                             // casi toda es horizontal en el suelo
+  if (v < 1) return;
+  zancada += v * dt;
+  if (zancada < ZANCADA) return;
+  zancada -= ZANCADA;
+  sonar(PASOS[Math.floor(Math.random() * PASOS.length)], { vol: Math.min(1, 0.4 + v / 12) });
 }
 
 /* ---------- botones del menú: encima (PC) y elegir ---------- */

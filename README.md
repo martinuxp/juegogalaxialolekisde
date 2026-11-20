@@ -96,7 +96,7 @@ El juego sabe si juegas con teclado y mouse o con el dedo (lo último que usaste
 | `js/camara.js`, `js/entrada.js`, `js/ui.js` | Cámara, controles y HUD |
 | `js/dialogo.js` | Caja de diálogo de los carteles (pausa el juego) |
 | `js/cineOvni.js` | Cinemática cartoon del ovni llegando a la arena (resorte amortiguado, estirar y aplastar) |
-| `herramientas/generar-sonidos.py` | Genera con matemática los sonidos de nave y de tensión (`python3 herramientas/generar-sonidos.py`) |
+| `herramientas/generar-sonidos.py` | Genera con matemática los sonidos de nave, tensión, jugador y espacio (`python3 herramientas/generar-sonidos.py`) |
 | `js/audio.js` + `sonidos/` | Sonidos (Web Audio): escucha los `emitir(...)` del juego, desbloqueo al primer toque, silencio y volúmenes |
 | `js/editor/editor.js`, `js/editor/editor.css` | Editor de planetas (modo debug) |
 | `js/niveles/formato.js` | Formato `nivel.json` del editor y bases de planeta (tierra, agua, roca, arena, hielo, lava) |
