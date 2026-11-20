@@ -28,7 +28,7 @@ Proyecto escolar de Física (2° medio, Liceo Camilo Henríquez, Temuco; profeso
 5. Multijugador (SHOULD).
 
 ## Estado técnico
-Módulos ES sin bundler. Three.js 0.170.0 copiado en `js/vendor/three/` (importmap en `index.html`). **No abre con doble clic**: hay que servirlo (GitHub Pages o `python -m http.server`). Mobile first, con joystick táctil, botones y teclado. PC: clic izq. + arrastrar = cámara, clic o F = puño, Espacio = salto y en el aire pisotón, E = leer, Tab = centrar (ver `README.md`). Ver la tabla de archivos en `README.md`.
+Módulos ES sin bundler. Three.js 0.170.0 copiado en `js/vendor/three/` (importmap en `index.html`). **No abre con doble clic**: hay que servirlo (GitHub Pages o `python -m http.server`). Mobile first, con joystick táctil, botones y teclado. PC: el primer clic atrapa el mouse (Pointer Lock) y mover el mouse gira la cámara, Esc lo suelta; clic o F = puño, Espacio = salto y en el aire pisotón (también Ctrl), E = leer, Tab = centrar (ver `README.md`). Ver la tabla de archivos en `README.md`.
 - **Física (`js/fisica.js`, sin DOM):** `g = g0·(R/r)²`, manda el planeta con más `g`, colisiones esféricas (planetas, islas y rocas), `superficieEn()` para poner cosas en el suelo, `pasoNewton` + `simularTrayectoria` para vuelos. Pruebas: `node pruebas/fisica.test.mjs`.
 - **Jugador:** paso fijo 1/120 s, coyote time, buffer, salto variable, dash que sigue la curvatura, puño/pisotón, estados `carga`/`vuelo` (escape.js), `dormido` (cinemática), mar no sólido (vuelve a `seguro`).
 - **Niveles:** datos en `js/niveles/*.js` (planetas con `mar`, `islas` (con `ancho` sobre el mar), `rocas`, `canon`, `muros`, `boton`, `flores`, `carteles` con `paginas`, `enemigos`, `meta`). Nivel 1 Columba (R 40, mar 42) es un tutorial por tramos: salto → aliens (puño) → dash → Isla de la Arena (mini jefe, enseña el pisotón) → cañón tapado por un campo de fuerza que se apaga al ganar; los huecos están medidos con la física real. Islas con `veg` (vegetacion.js, decorativa).
@@ -54,4 +54,5 @@ El plan completo está en el doc «Alma Lunar · Plan del proyecto» (Claude Doc
 - Como todos deben defender el código, **explicar la física detrás de cada cambio**. Nada de magia.
 - Priorizar MUST sobre SHOULD. Avanzar sin preguntar de más y hacer preguntas solo si cambian el rumbo.
 - Después de cambiar física, correr las pruebas deterministas de física. Si se toca el estilo, mirar capturas en vertical y en horizontal.
+- **Versión:** `js/version.js` tiene el historial que se ve en el inicio. Cada cambio que va a `main` suma una entrada arriba (0.x hasta la feria).
 - Commits en español. Los avances importantes van a `main`.

@@ -11,7 +11,7 @@ import { CFG } from './config.js';
 import { mundo, velocidadEscape } from './fisica.js';
 import { escape } from './mecanicas/escape.js';
 import { spawnEnemies } from './enemigos.js';
-import { input, atajos } from './entrada.js';
+import { input, atajos, soltarMouse } from './entrada.js';
 import { icono } from './iconos.js';
 
 const $ = id => document.getElementById(id);
@@ -168,4 +168,4 @@ export function actualizarHUD(dt) {
   hudDebug(dt);
 }
 
-export function mostrarHUD(v) { $('hud').classList.toggle('oculto', !v); }
+export function mostrarHUD(v) { $('hud').classList.toggle('oculto', !v); if (!v) soltarMouse(); }   // sin HUD (menú, historia) el mouse queda libre
