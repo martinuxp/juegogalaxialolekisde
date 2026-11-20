@@ -23,6 +23,7 @@ export const ajustes = {
   dificultad: 'normal',
   historiaVista: false,
   nivelesCompletos: 0, // niveles terminados (0 a 5): el menú lo muestra en el mar de Columba
+  guardado: null,      // dónde vas DENTRO de un nivel: { nivel: 'icaro', botas: true, repisa: 3, semilla: 27 }
 };
 try {
   const viejo = JSON.parse(localStorage.getItem('almaLunarLook') || 'null');   // versión anterior

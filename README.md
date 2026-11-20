@@ -51,6 +51,7 @@ El formato del archivo está explicado en `js/niveles/formato.js`. Un nivel expo
 ```
 node pruebas/fisica.test.mjs
 node pruebas/formato.test.mjs
+node pruebas/pozo.test.mjs
 ```
 
 Revisa que `g` baje con `1/r²`, que `v_esc` sea correcta, que con 95 % de `v_esc` vuelvas a caer y con 105 % no,
@@ -97,6 +98,7 @@ El juego sabe si juegas con teclado y mouse o con el dedo (lo último que usaste
 | `js/dialogo.js` | Caja de diálogo de los carteles (pausa el juego) |
 | `js/cineIcaro.js` | Llegada a Ícaro (choque con el cinturón, caída a la grieta, despertar) y la charla de la cueva con la personaje misteriosa (planos del guion, suavizado exponencial) |
 | `js/cueva.js`, `js/misteriosa.js` | Decorado de la cueva de dunas (esfera invisible de R = 2 000 m) y la personaje misteriosa (modelo y gestos por código) |
+| `js/pozoGenerador.js`, `js/pozo.js` | El pozo de Ícaro: laberinto vertical procedural con semilla (`?semilla=`), validador con h = v²/2g y alcance del vuelo, paredes de capas instanciadas, checkpoints por repisa, rescate al caer y salida a la luz |
 | `js/cineOvni.js` | Cinemática cartoon del ovni llegando a la arena (resorte amortiguado, estirar y aplastar) |
 | `herramientas/generar-sonidos.py` | Genera con matemática los sonidos de nave, tensión, jugador y espacio (`python3 herramientas/generar-sonidos.py`) |
 | `js/audio.js` + `sonidos/` | Sonidos (Web Audio): escucha los `emitir(...)` del juego, desbloqueo al primer toque, silencio y volúmenes |

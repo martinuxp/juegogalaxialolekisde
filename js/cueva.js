@@ -53,7 +53,7 @@ function halo(rgba, tam) {
  * "ocultas" del nivel, que son las que chocan), cristales, estalagmitas y el
  * rayo de luz que entra por la grieta allá arriba (la salida).
  */
-export function decorarCueva(grupo, planetas) {
+export function decorarCueva(grupo, planetas, { salida: [sx, sz] = [6.5, -31], bocaAlto = 118 } = {}) {
   const P = planetas[0], r = rng(91);
   // SUELO: un casquete de la esfera (80 m de radio). Es la MISMA esfera que choca, así que calza exacto.
   const ang = 80 / P.R;
@@ -84,6 +84,7 @@ export function decorarCueva(grupo, planetas) {
     const x = Math.cos(a) * R0, z = -12 + Math.sin(a) * R0 * 1.3;
     if (Math.abs(x) < 5 && z > -16) continue;                            // nada en el pasillo
     if (Math.hypot(x, z + 22) < 10) continue;                            // ni en la sala
+    if (Math.abs(x) < 7 && z < -30) continue;                            // ni en el pasillo al pozo
     const alto = 1.5 + r() * 4;
     const { p, d } = enSuelo(x, z, alto / 2 - 0.2);
     const e = outline(new THREE.Mesh(new THREE.ConeGeometry(0.4 + r() * 0.7, alto, 6), rocaMat), 0.05);
@@ -106,7 +107,7 @@ export function decorarCueva(grupo, planetas) {
   }
 
   // RAYO DE LUZ que entra por la grieta, muy arriba: muestra que la salida está hacia ARRIBA
-  const salida = enSuelo(6.5, -31);
+  const salida = enSuelo(sx, sz);
   // degradé: transparente abajo, más claro arriba (la luz se va perdiendo en el polvo al bajar)
   const cvR = document.createElement('canvas'); cvR.width = 4; cvR.height = 128;
   const gR = cvR.getContext('2d'), grR = gR.createLinearGradient(0, 128, 0, 0);
@@ -119,7 +120,7 @@ export function decorarCueva(grupo, planetas) {
   const charco = new THREE.Mesh(new THREE.CircleGeometry(3.8, 40),
     new THREE.MeshBasicMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0.13, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
   charco.position.copy(salida.p).addScaledVector(salida.d, 0.03); faceNormal(charco, salida.d);
-  const boca = halo('rgba(220,235,255,.9)', 26); boca.position.copy(salida.p).addScaledVector(salida.d, 118);
+  const boca = halo('rgba(220,235,255,.9)', 26); boca.position.copy(salida.p).addScaledVector(salida.d, bocaAlto);
   grupo.add(rayo, charco, boca);
   // polvo que flota en el rayo
   const n = 70, pts = new Float32Array(n * 3);

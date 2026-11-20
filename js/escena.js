@@ -66,6 +66,32 @@ export function aplicarAmbiente(a = {}) {
   if (estrellas) estrellas.visible = A.estrellas;
 }
 
+/**
+ * Mezcla dos ambientes (f = 0 → a, f = 1 → b) sin crear nada nuevo: se puede
+ * llamar en cada cuadro. Lo usa el pozo de Ícaro para pasar de la cueva negra
+ * a la luz que baja desde arriba. "arriba" (0 a 1) suma luz extra de b:
+ * luzArriba, solArriba y nieblaArriba (más alto = más claro y se ve más lejos).
+ */
+const _cb = new THREE.Color();
+export function mezclarAmbiente(a, b, f, arriba = 0) {
+  if (!b) return;
+  const A = { ...AMBIENTE_BASE, ...a }, B = { ...AMBIENTE_BASE, ...b };
+  const mix = (x, y) => x + (y - x) * f;
+  const col = (x, y, out) => out.setHex(x).lerp(_cb.setHex(y), f);
+  const extra = arriba * f;
+  col(A.cielo, B.cielo, hemi.color); col(A.suelo, B.suelo, hemi.groundColor);
+  hemi.intensity = mix(A.luzCielo, B.luzCielo) + (B.luzArriba || 0) * extra;
+  sun.intensity = mix(A.sol, B.sol) + (B.solArriba || 0) * extra;
+  sun.position.set(mix(A.dirSol[0], B.dirSol[0]), mix(A.dirSol[1], B.dirSol[1]), mix(A.dirSol[2], B.dirSol[2]));
+  if (scene.background && scene.background.isColor) col(A.fondo, B.fondo, scene.background);
+  if (scene.fog && A.niebla && B.niebla) {
+    col(A.niebla[0], B.niebla[0], scene.fog.color);
+    scene.fog.near = mix(A.niebla[1], B.niebla[1]);
+    scene.fog.far = mix(A.niebla[2], B.niebla[2]) + (B.nieblaArriba || 0) * extra;
+  }
+  ambienteActual.luzJugador = mix(A.luzJugador, B.luzJugador);
+}
+
 /* ---- materiales cartoon ---- */
 // "rampa" de 3 tonos para el material toon
 export const gradMap = (() => {

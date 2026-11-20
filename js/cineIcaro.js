@@ -28,9 +28,9 @@
    ========================================================= */
 import { THREE, V3, clamp, damp, rng } from './util.js';
 import { scene, camera, toon, outline, planetGeo, aplicarAmbiente } from './escena.js';
-import { juego, emitir, escuchar } from './estado.js';
+import { juego, ajustes, guardarAjustes, emitir, escuchar } from './estado.js';
 import { player, mallaJugador, respawnPlayer, mostrarBotas } from './jugador.js';
-import { cam } from './camara.js';
+import { cam, camaraAlInicio } from './camara.js';
 import { mostrarHUD } from './ui.js';
 import { limpiarEntrada } from './entrada.js';
 import { crearEstela, crearBrillo, NEST } from './cineDespegue.js';
@@ -358,6 +358,9 @@ function revisarCueva() {
     C.botas.visible = false;
     p.tieneSuper = true;
     mostrarBotas(true);
+    // PROGRESO: desde aquí, si cierras el juego, vuelves con las botas puestas (sin repetir las cinemáticas)
+    ajustes.guardado = { nivel: 'icaro', botas: true, repisa: -1, semilla: def.pozo ? def.pozo.semilla : null };
+    guardarAjustes();
     emitir('botas');
     emitir('leer', {
       icono: 'botas',
@@ -580,6 +583,24 @@ export function saltarCineIcaro() {
     return true;
   }
   return false;
+}
+
+/**
+ * Si ya habías tomado las botas (ajustes.guardado), sigues desde ahí:
+ * sin la llegada ni la charla, con las botas puestas, en la sala o en la
+ * última repisa que alcanzaste del pozo. Devuelve false si no hay nada guardado.
+ */
+export function reanudarIcaro() {
+  const g = ajustes.guardado, def = juego.nivel;
+  if (!g || g.nivel !== 'icaro' || !g.botas) return false;
+  C.hecha = true;
+  if (C.botas) C.botas.visible = false;
+  player.tieneSuper = true; mostrarBotas(true);
+  // la repisa guardada solo vale si el pozo es el mismo (misma semilla)
+  const k = def.pozo && g.semilla === def.pozo.semilla ? g.repisa : -1;
+  juego.checkpoint = k >= 0 && def.checkpointRepisa ? def.checkpointRepisa(k) : { planeta: 0, dir: def.charla.botas, mirar: new V3(0, 0, -1) };
+  respawnPlayer(); camaraAlInicio();
+  return true;
 }
 
 /** Para pruebas automáticas. */
