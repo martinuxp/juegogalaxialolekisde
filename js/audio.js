@@ -111,10 +111,13 @@ ajustes.silencio ??= false;
 /* ---------- la cadena de volúmenes ---------- */
 const AC = window.AudioContext || window.webkitAudioContext;
 const ctx = AC ? new AC() : null;                    // navegador muy viejo: el juego sigue mudo
-let general, efectos, musica;
+let general, efectos, musica, sala, salaVol;
 if (ctx) {
   general = ctx.createGain(); general.connect(ctx.destination);
   efectos = ctx.createGain(); efectos.connect(general);
+  // ECO de la cueva: los efectos también pasan por una "sala" (ConvolverNode) que se mezcla encima
+  sala = ctx.createConvolver(); salaVol = ctx.createGain(); salaVol.gain.value = 0;
+  efectos.connect(sala).connect(salaVol).connect(general);
   musica = ctx.createGain(); musica.connect(general);
   aplicarVolumen();
 }
@@ -126,6 +129,49 @@ export function aplicarVolumen() {
   general.gain.setTargetAtTime(ajustes.silencio ? 0 : 1, t, 0.05);
   efectos.gain.setTargetAtTime(ajustes.volEfectos, t, 0.05);
   musica.gain.setTargetAtTime(ajustes.volMusica * (juego.modo === 'cartel' ? 0.4 : 1), t, 0.2);
+}
+
+/* =========================================================
+   REVERB Y ECO (cueva de Ícaro)
+   ---------------------------------------------------------
+   En una cueva el sonido rebota en las paredes muchas veces.
+   Lo que oímos es el sonido original + millones de copias que
+   llegan tarde y más bajitas. Eso se describe con la "respuesta
+   al impulso" (IR): lo que se oiría si hubiera un aplauso
+   infinitamente corto. El ConvolverNode aplica esa IR a cada
+   sonido (convolución: cada muestra dispara una copia de la IR).
+   Nuestra IR la fabricamos con matemática:
+     · cola: ruido que se apaga como e^(−6,9·t/T)  → a los T
+       segundos bajó 1000 veces (−60 dB: el "RT60" de la acústica)
+     · ecos: rebotes claros en la pared, que llegan a
+           t = 2·d / 343   (ida y vuelta, a 343 m/s)
+       y cada uno más bajito que el anterior.
+   ========================================================= */
+let ecoActual = null;
+function crearSala({ cola = 2.6, pared = 18 } = {}) {
+  const sr = ctx.sampleRate, n = Math.floor(sr * cola), ir = ctx.createBuffer(2, n, sr);
+  const tEco = 2 * pared / 343;                                  // ida y vuelta a la pared
+  for (let c = 0; c < 2; c++) {
+    const d = ir.getChannelData(c);
+    for (let i = 0; i < n; i++) {
+      const t = i / sr;
+      d[i] = (Math.random() * 2 - 1) * Math.exp(-6.9 * t / cola) * Math.min(1, t / 0.02) * 0.35;
+    }
+    // 3 ecos claros (cada oído los oye un poquito distinto: más espacio)
+    [[1, 1], [2, 0.5], [3, 0.25]].forEach(([k, a]) => {
+      const i0 = Math.floor((tEco * k + c * 0.007) * sr);
+      for (let j = 0; j < 400 && i0 + j < n; j++) d[i0 + j] += (Math.random() * 2 - 1) * a * Math.exp(-j / 80);
+    });
+  }
+  sala.buffer = ir;                                               // normalize = true: el volumen total queda parejo
+}
+/** El nivel dice cuánto eco tiene ( eco: { mezcla, cola, pared } ); sin eco = 0. */
+function ponerEco(eco) {
+  if (!ctx) return;
+  const clave = eco ? JSON.stringify(eco) : null;
+  if (eco && clave !== ecoActual) crearSala(eco);
+  ecoActual = clave;
+  salaVol.gain.setTargetAtTime(eco ? eco.mezcla : 0, ctx.currentTime, 0.3);
 }
 
 /* ---------- cargar los archivos ---------- */
@@ -254,6 +300,7 @@ function callarTension(seg) { apagar(fondo.tension, seg); fondo.tension = null; 
 function calma(desde = 0) { fondo.zona = 'calma'; fondo.calmaDesde = desde; callarTension(0.8); }
 
 escuchar('nivel', def => {
+  ponerEco(def.eco);
   callarTema(0.3); calma(); salirDelEspacio(0.5);
   if (fondo.nombre !== (def.musica || null)) { apagar(fondo.h, 0.3); fondo.h = null; olvidarPelea(0.3); }
   fondo.nombre = def.musica || null;
@@ -311,11 +358,11 @@ function posicion(h) {
   return a + ((h.desde - a + ya) % largo + largo) % largo;
 }
 function olvidarPelea(seg) { apagar(pelea.h, seg); pelea.h = null; pelea.activa = false; pelea.retomar = null; pelea.sinEnemigos = 99; }
-/** ¿Algún enemigo te está persiguiendo? (la misma regla que usa enemigos.js: mismo planeta y más cerca que su aggro) */
+/** ¿Algún enemigo te está persiguiendo? (lo decide enemigos.js: e.persigue) */
 function hayPelea() {
   const p = juego.jugador;
   if (!p || juego.modo !== 'juego') return false;
-  return juego.enemigos.some(e => !e.dead && !e.T.jefe && e.planet === p.planet && e.pos.distanceTo(p.pos) < e.T.aggro);
+  return juego.enemigos.some(e => !e.dead && !e.T.jefe && e.persigue);
 }
 function dirigirPelea(dt) {
   const def = SONIDOS[fondo.nombre];
@@ -392,6 +439,8 @@ escuchar('caidaGrieta', () => sonar('caidaGrieta'));
 escuchar('caeCueva', () => { apagar(llegada, 0.5); llegada = null; sonar('golpeCueva'); });
 escuchar('ojosRojos', () => sonar('ojosRojos'));
 escuchar('botas', () => sonar('botas'));
+escuchar('repisa', () => sonar('cargaTarjeta'));          // llegaste a una repisa nueva (checkpoint)
+escuchar('salidaLuz', () => sonar('nivelCompleto'));
 // súper salto con las botas: carga (al agacharte), "ting" cuando está listo y el salto
 let carga = null;
 escuchar('agacha', () => { apagar(carga, 0.05); carga = sonar('superCarga'); });
@@ -442,6 +491,7 @@ export function actualizarAudio(dt) {
   musica.gain.setTargetAtTime(ajustes.volMusica * (juego.modo === 'cartel' ? 0.4 : 1), ctx.currentTime, 0.2);
   if ((tema.loop || tema.entrada) && !['juego', 'cartel', 'cine'].includes(juego.modo)) callarTema(0.5);   // volviste al menú
   dirigirFondo(dt);
+  if (ecoActual && !['juego', 'cartel', 'cine'].includes(juego.modo)) ponerEco(null);   // en el menú no hay cueva
   if (fondo.espacio && !['cine', 'carga'].includes(juego.modo)) salirDelEspacio(1);     // por si saliste a medias
   if (juego.modo !== 'juego' || !juego.jugador) return;
   pasos(dt);

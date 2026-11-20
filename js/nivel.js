@@ -61,6 +61,7 @@ export function cargarNivel(def) {
 export function stepNivel(dt) {
   progreso.tiempo += dt;
   const def = juego.nivel;
+  if (def.alPaso) def.alPaso(dt);     // lógica propia del nivel (ej. el pozo de Ícaro)
 
   // META "escapar": ¿ya tienes energía para no volver nunca?
   //   energía por kilo = ½·v² − G·M/r   (movimiento − lo que pide la gravedad)
@@ -73,6 +74,9 @@ export function stepNivel(dt) {
     const energia = 0.5 * player.vel.lengthSq() - GM(P) / r;
     if (energia >= 0 && r > (P.mar || P.R) + 10) {
       progreso.paso = 'escapando';
+      // se GUARDA ya: si cierras el juego en plena cinemática, igual quedó ganado
+      ajustes.nivelesCompletos = Math.max(ajustes.nivelesCompletos, def.numero);
+      ajustes.guardado = null; guardarAjustes();
       emitir('escapo', { v: player.vel.length(), r });
     }
   }
@@ -149,6 +153,7 @@ export function completarNivel() {
   const def = juego.nivel;
   progreso.paso = 'completo';
   ajustes.nivelesCompletos = Math.max(ajustes.nivelesCompletos, def.numero);
+  ajustes.guardado = null;
   guardarAjustes();
   emitir('completo', { def, tiempo: progreso.tiempo });
 }

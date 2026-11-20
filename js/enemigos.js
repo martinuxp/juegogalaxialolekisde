@@ -80,7 +80,12 @@ function makeEnemy(kind, planetIdx, dir, altura = 0.05) {
 export function spawnEnemies(spawns = spawnsActuales) {
   spawnsActuales = spawns;
   for (const e of juego.enemigos) scene.remove(e.mesh.g);
-  juego.enemigos = spawns.map(([k, pi, d]) => makeEnemy(k, pi, d));
+  // [tipo, planeta, dirección, altura, casa]: casa = radio (m) del que no se aleja paseando (ej. su repisa en el pozo)
+  juego.enemigos = spawns.map(([k, pi, d, alto, casa]) => {
+    const e = makeEnemy(k, pi, d, alto);
+    if (casa) { e.casa = e.pos.clone(); e.casaR = casa; }
+    return e;
+  });
 }
 
 /** Agrega UN enemigo sin borrar los demás (el ovni los baja con el rayo). altura = metros sobre el suelo. */
@@ -126,15 +131,19 @@ export function stepEnemies(dt) {
       _toP.copy(p.pos).sub(e.pos);
       const dist = _toP.length();
       chasing = p.planet === e.planet && dist < e.T.aggro && p.state !== 'launch' && p.state !== 'vuelo';
+      // los que cuidan una repisa solo te persiguen si estás a su misma altura (si no, se caerían)
+      if (chasing && e.casa && Math.abs(_toP.dot(e.up)) > 3) chasing = false;
       if (chasing) {
         tangent(_w, _toP, e.up).normalize();
         if (e.T.charger && e.cd <= 0 && dist < 11) { e.state = 'wind'; e.t = 0.7; e.chargeDir.copy(_w); _w.set(0, 0, 0); }
       } else {
         e.wanderT -= dt;
         if (e.wanderT <= 0) { e.wanderDir.applyAxisAngle(e.up, (Math.random() - 0.5) * 2.5); e.wanderT = 1.5 + Math.random() * 2; }
+        if (e.casa && e.pos.distanceTo(e.casa) > e.casaR) { e.wanderDir.copy(e.casa).sub(e.pos); e.wanderT = 1; }   // vuelve a su repisa
         tangent(_w, e.wanderDir, e.up).normalize(); e.wanderDir.copy(_w); spd *= 0.45;
       }
     }
+    e.persigue = chasing;              // audio.js lo mira para la música de pelea
     let vy = e.vel.dot(e.up);
     tangent(_eh, e.vel, e.up);
     _t.copy(_w).multiplyScalar(spd);

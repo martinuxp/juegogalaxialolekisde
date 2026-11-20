@@ -202,7 +202,7 @@ function alturaAlSuelo(p) {
 export function respawnPlayer() {
   const p = player, ini = juego.checkpoint || juego.nivel.inicio;   // checkpoint = entrada de la arena del jefe
   const P = mundo.planetas[ini.planeta];
-  p.pos.copy(P.c).addScaledVector(ini.dir, superficieEn(P, ini.dir) + p.r + 0.02);
+  p.pos.copy(P.c).addScaledVector(ini.dir, superficieEn(P, ini.dir) + p.r + 0.02 + (ini.alto || 0));   // alto: sobre una repisa
   p.vel.set(0, 0, 0); p.up.copy(ini.dir);
   tangent(p.facing, ini.mirar, ini.dir).normalize();
   p.hp = p.maxHP; p.state = 'normal'; p.invul = 2; p.carga = 0;

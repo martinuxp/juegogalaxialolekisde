@@ -37,7 +37,7 @@ import { pintarIconos } from './iconos.js';
 import './dialogo.js';
 import { actualizarAudio, _audio } from './audio.js';
 import { actualizarCineOvni } from './cineOvni.js';
-import { iniciarLlegada, actualizarCineIcaro, saltarCineIcaro, _icaro } from './cineIcaro.js';
+import { iniciarLlegada, actualizarCineIcaro, saltarCineIcaro, reanudarIcaro, _icaro } from './cineIcaro.js';
 import { NIVELES, LABORATORIO } from './niveles/index.js';
 import { abrirEditor, frameEditor, conectarEditor, volverAlEditor, ed } from './editor/editor.js';
 
@@ -57,7 +57,9 @@ function empezarNivel(i, conCine = false) {
   mostrarMenu(false);
   jugadorALaPlaya(false);
   cargarNivel(NIVELES[i]);
-  if (NIVELES[i].intro === 'icaro') {
+  if (NIVELES[i].intro === 'icaro' && reanudarIcaro()) {
+    juego.modo = 'juego'; mostrarHUD(true); tituloNivel();         // ya tenías las botas: sigues en la cueva (o en tu repisa)
+  } else if (NIVELES[i].intro === 'icaro') {
     // llegada a Ícaro: choque con el cinturón, caída a la grieta y despertar en la cueva (cineIcaro.js)
     $('saltarCine').classList.remove('oculto');
     iniciarLlegada(() => {
@@ -99,10 +101,16 @@ conectarMenu({
   nivel: i => empezarNivel(i),
   menu: () => irAlMenu(),
 });
+/** JUGAR sigue donde ibas: el primer planeta que no has terminado (o en el que quedaste a medias). */
+function nivelGuardado() {
+  const g = ajustes.guardado, i = g ? NIVELES.findIndex(n => n.id === g.nivel) : -1;
+  return i >= 0 ? i : Math.min(ajustes.nivelesCompletos, NIVELES.length - 1);
+}
 function jugar() {
   if (!ajustes.historiaVista) historiaYJugar();
-  else empezarNivel(0, true);
+  else { const i = nivelGuardado(); empezarNivel(i, i === 0); }
 }
+escuchar('irMenu', () => irAlMenu());
 
 $('tMenu').onclick = () => ed.probando ? volverAlEditor() : irAlMenu();   // probando un nivel del editor: vuelve al editor
 function editor() { mostrarMenu(false); jugadorALaPlaya(false); abrirEditor(); }

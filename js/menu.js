@@ -60,6 +60,16 @@ export function mostrarMenu(si) {
     : ajustes.nivelesCompletos === 0 ? 'Sin su luna, el mar de Columba se quedó quieto.'
     : `El mar vuelve a moverse · ${ajustes.nivelesCompletos} de 5`;
   $('mHistoria').classList.toggle('oculto', !ajustes.historiaVista);
+  // PLANETAS: Jugar sigue donde ibas; aquí puedes volver a uno que ya abriste
+  const abiertos = NIVELES.slice(0, Math.min(ajustes.nivelesCompletos + 1, NIVELES.length));
+  $('mPlanetas').classList.toggle('oculto', abiertos.length < 2);
+  $('mPlanetas').innerHTML = '';
+  abiertos.forEach((n, i) => {
+    const b = document.createElement('button');
+    b.className = 'mb chico'; b.textContent = n.nombre;
+    b.onclick = () => acciones.nivel(i);
+    $('mPlanetas').append(b);
+  });
   $('menuPie').textContent = 'Física 2° medio · Unidad IV: El Universo · ';
   // versión (tocarla muestra el historial de cambios, ver version.js)
   const bv = document.createElement('button');

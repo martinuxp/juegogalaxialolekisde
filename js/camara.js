@@ -89,6 +89,21 @@ function noAtravesar(target, dt) {
     const t = -b - Math.sqrt(disc);
     if (t > 0 && t < tMin) tMin = t;
   }
+  // CAJAS (muros y repisas del pozo): método de las "placas". En los ejes de la caja,
+  // el rayo entra a cada par de caras paralelas en un t y sale en otro; el rayo está
+  // DENTRO de la caja donde los 3 intervalos se cruzan: desde el mayor "entra" hasta el menor "sale".
+  for (const m of mundo.muros) {
+    _ro.copy(target).sub(m.c);
+    let entra = -Infinity, sale = Infinity;
+    for (const [eje, h] of [[m.x, m.medio.x], [m.y, m.medio.y], [m.z, m.medio.z]]) {
+      const o = _ro.dot(eje), d = _rd.dot(eje);
+      if (Math.abs(d) < 1e-9) { if (Math.abs(o) > h) { entra = Infinity; break; } continue; }
+      let t1 = (-h - o) / d, t2 = (h - o) / d;
+      if (t1 > t2) [t1, t2] = [t2, t1];
+      entra = Math.max(entra, t1); sale = Math.min(sale, t2);
+    }
+    if (entra <= sale && entra > 0 && entra < tMin) tMin = entra;
+  }
   const libre = tMin < L ? Math.max(0.6, tMin - 0.4) : L;
   if (!isFinite(distLibre)) distLibre = libre;
   distLibre = libre < distLibre ? libre : distLibre + (libre - distLibre) * damp(3, dt);

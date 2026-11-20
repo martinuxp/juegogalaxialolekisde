@@ -10,6 +10,7 @@
      · fecha: el día del cambio (hora de Chile)
    ========================================================= */
 export const HISTORIAL = [
+  { v: '0.18', fecha: '20 nov', cambios: 'Ícaro: pozo vertical procedural con capas de colores, repisas con gatos-alien, eco en la cueva y salida a la luz. Jugar sigue en el planeta donde ibas y Ícaro guarda las botas y la última repisa' },
   { v: '0.17', fecha: '20 nov', cambios: 'Botas de salto: mantener para agacharte, destello y sonido al estar listo, salto alto con control total. Cámara que no se mete en las rocas. Charlas más rápidas con fondo rojo difuminado. Música de las Dunas Subterráneas con crossfade a la versión de pelea' },
   { v: '0.16', fecha: '20 nov', cambios: 'Ícaro: cinemática de llegada (choque con el cinturón y caída a la grieta), cueva oscura de dunas con linterna, personaje misteriosa con su charla, botas de salto, música y sonidos nuevos' },
   { v: '0.15', fecha: '20 nov', cambios: 'Sonidos: música ambiente del espacio en el despegue y la carga, rugido del cohete, salto, pasos, puño, caídas, chapuzón y fanfarria al completar' },
