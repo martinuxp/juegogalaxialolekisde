@@ -132,7 +132,7 @@ export function stepJefe(dt) {
       }
       break;
     case 'bajaJefe':
-      if (pelea.jefe.grounded) { pelea.fase = 'pelea'; ovniRayo(0); cam.shake = 0.5; pelea.jefe.fase = 'acecha'; pelea.jefe.t = 1; }
+      if (pelea.jefe.grounded) { pelea.fase = 'pelea'; ovniRayo(0); cam.shake = 0.5; pelea.jefe.fase = 'acecha'; pelea.jefe.t = 1; emitir('jefeAterriza'); }
       break;
   }
 }

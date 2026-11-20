@@ -49,7 +49,11 @@ const SONIDOS = {
   voz4: { archivo: 'voz-enemigo4.wav', vol: 0.55, tono: 0.1 },
   voz5: { archivo: 'voz-enemigo5.wav', vol: 0.55, tono: 0.1 },
   voz6: { archivo: 'voz-enemigo6.wav', vol: 0.55, tono: 0.1 },
-  // FALTAN (si llegan, se agregan aquí y ya suenan): salto, puno, musicaMenu, musicaColumba, musicaJefe
+  // MÚSICA del primer jefe, en 3 trozos (musica: true = va por el volumen de Música)
+  jefeEntrada: { archivo: 'boss1-fadein.mp3',  vol: 1, musica: true },              // aparece el jefe
+  jefeLoop:    { archivo: 'boss1-loop.mp3',    vol: 1, musica: true, loop: true },  // toca el suelo: se repite
+  jefeSalida:  { archivo: 'boss1-fadeout.mp3', vol: 1, musica: true },              // lo derrotas
+  // FALTAN (si llegan, se agregan aquí y ya suenan): salto, puno, musicaMenu, musicaColumba
 };
 const VOCES = ['voz1', 'voz2', 'voz3', 'voz4', 'voz5', 'voz6'];
 
@@ -80,6 +84,21 @@ export function aplicarVolumen() {
 
 /* ---------- cargar los archivos ---------- */
 const buffers = {};
+const bordes = {};             // [inicio, fin] en segundos del trozo que se repite
+
+/* El MP3 agrega unos milisegundos de silencio al principio y al final
+   (relleno del codificador). Si el loop los incluye, se oye un "tic"
+   en cada vuelta. Buscamos dónde empieza y termina el sonido de verdad,
+   mirando solo los primeros y últimos ~50 ms. */
+function bordesDelLoop(buf) {
+  const n = buf.length, max = Math.min(2400, n >> 2), canales = [];
+  for (let c = 0; c < buf.numberOfChannels; c++) canales.push(buf.getChannelData(c));
+  const suena = i => canales.some(d => Math.abs(d[i]) > 1e-4);
+  let a = 0, b = n - 1;
+  while (a < max && !suena(a)) a++;
+  while (b > n - 1 - max && !suena(b)) b--;
+  return [a / buf.sampleRate, (b + 1) / buf.sampleRate];
+}
 async function cargar(nombre, def) {
   try {
     const r = await fetch('sonidos/' + def.archivo);
@@ -87,6 +106,7 @@ async function cargar(nombre, def) {
     const bytes = await r.arrayBuffer();
     // decodeAudioData con callbacks: así funciona también en Safari viejo
     buffers[nombre] = await new Promise((ok, mal) => ctx.decodeAudioData(bytes, ok, mal));
+    if (def.loop) bordes[nombre] = bordesDelLoop(buffers[nombre]);
   } catch (e) { console.warn('[audio] no pude cargar', def.archivo, e); }
 }
 if (ctx) for (const [n, d] of Object.entries(SONIDOS)) cargar(n, d);
@@ -109,7 +129,8 @@ for (const ev of ['pointerdown', 'touchend', 'keydown', 'click']) addEventListen
 document.addEventListener('visibilitychange', () => { if (!document.hidden) despertar(); });
 
 /* ---------- tocar un sonido ----------
-   opciones: vol (multiplica), tono (velocidad de reproducción: 2 = una octava más agudo) */
+   opciones: vol (multiplica), tono (velocidad de reproducción: 2 = una octava más agudo),
+             cuando (segundo del reloj de audio en que parte; por defecto, ya) */
 export function sonar(nombre, op = {}) {
   const def = SONIDOS[nombre], buf = buffers[nombre];
   if (!ctx || !def || !buf || (ctx.state !== 'running' && !pedido)) return null;
@@ -120,8 +141,9 @@ export function sonar(nombre, op = {}) {
   s.playbackRate.value = (op.tono || 1) * azar;
   const g = ctx.createGain();
   g.gain.value = def.vol * (op.vol ?? 1);
-  s.connect(g).connect(efectos);
-  s.start();
+  if (def.loop) { s.loop = true; [s.loopStart, s.loopEnd] = bordes[nombre]; }
+  s.connect(g).connect(def.musica ? musica : efectos);
+  s.start(Math.max(op.cuando || 0, ctx.currentTime), def.loop ? s.loopStart : 0);
   _audio.ultimos.push(nombre); if (_audio.ultimos.length > 20) _audio.ultimos.shift();
   return { s, g };
 }
@@ -131,8 +153,36 @@ function apagar(h, seg = 0.25) {
   if (!h) return;
   const t = ctx.currentTime;
   h.g.gain.setTargetAtTime(0, t, seg / 3);
-  h.s.stop(t + seg);
+  try { h.s.stop(t + seg); } catch (e) { /* ya había terminado */ }
 }
+
+/* =========================================================
+   MÚSICA DEL JEFE: entrada → loop → salida
+   ---------------------------------------------------------
+   Todo se programa con ctx.currentTime, el reloj de la tarjeta
+   de sonido (exacto a la muestra), no con setTimeout (que se
+   atrasa si el celular está ocupado dibujando).
+   ========================================================= */
+const tema = { entrada: null, loop: null, finEntrada: 0 };
+function callarTema(seg) {
+  apagar(tema.entrada, seg); apagar(tema.loop, seg);
+  tema.entrada = tema.loop = null;
+}
+// jefe.js manda emitir('jefe', {hp, max}) al aparecer y en cada golpe: solo la primera vez cuenta
+escuchar('jefe', d => {
+  if (!d || tema.entrada || tema.loop || !buffers.jefeEntrada) return;
+  tema.entrada = sonar('jefeEntrada');
+  tema.finEntrada = ctx.currentTime + buffers.jefeEntrada.duration;
+});
+// toca el suelo: parte el loop. Si la entrada aún no termina, espera a que termine
+// (son centésimas: el jefe cae ~0,8 s y la entrada dura 0,86 s) para que calce con la música.
+escuchar('jefeAterriza', () => {
+  if (tema.loop) return;
+  tema.loop = sonar('jefeLoop', { cuando: tema.finEntrada });
+});
+escuchar('jefeVencido', () => { callarTema(0.15); sonar('jefeSalida'); });
+escuchar('reaparecer', () => callarTema(0.6));       // perdiste en la pelea: la pelea (y su música) parten de nuevo
+escuchar('nivel', () => callarTema(0.3));
 
 /* =========================================================
    QUÉ SUENA EN CADA EVENTO
@@ -173,6 +223,7 @@ let charla = 2;
 export function actualizarAudio(dt) {
   if (!ctx) return;
   musica.gain.setTargetAtTime(ajustes.volMusica * (juego.modo === 'cartel' ? 0.4 : 1), ctx.currentTime, 0.2);
+  if ((tema.loop || tema.entrada) && !['juego', 'cartel', 'cine'].includes(juego.modo)) callarTema(0.5);   // volviste al menú
   if (juego.modo !== 'juego' || !juego.jugador) return;
   charla -= dt;
   if (charla > 0) return;
