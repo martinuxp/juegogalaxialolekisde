@@ -18,8 +18,9 @@ import { CFG, DIFICULTADES } from './config.js';
 import { mundo, GM } from './fisica.js';
 import { construirMundo, piezas } from './mundo.js';
 import { spawnEnemies } from './enemigos.js';
-import { player, respawnPlayer, mostrarLunita } from './jugador.js';
+import { player, respawnPlayer, mostrarLunita, mostrarBotas } from './jugador.js';
 import { camaraAlInicio, cam } from './camara.js';
+import { aplicarAmbiente } from './escena.js';
 import { limpiarEscape } from './mecanicas/escape.js';
 import { limpiarEntrada } from './entrada.js';
 import { crearOvniNivel, limpiarOvni } from './ovni.js';
@@ -30,6 +31,7 @@ export const progreso = { paso: 'jugar', tiempo: 0, avisoCanon: false, murosT: -
 export function cargarNivel(def) {
   juego.nivel = def;
   mundo.gravMul = 1;
+  aplicarAmbiente(def.ambiente);      // luz, fondo y niebla del nivel (escena.js)
   construirMundo(def);
   spawnEnemies(def.enemigos || []);
   if (def.ovni) crearOvniNivel(def.ovni); else limpiarOvni();
@@ -38,7 +40,8 @@ export function cargarNivel(def) {
   player.maxHP = def.laboratorio ? CFG.maxHP : DIFICULTADES[ajustes.dificultad].corazones;
   player.tieneSuper = !!def.superDesdeInicio;
   player.acostado = 0; player.ojos = 1;
-  mostrarLunita(!!def.laboratorio);   // la lunita del casco aparece al tomar un fragmento
+  mostrarLunita(!!def.laboratorio);
+  mostrarBotas(false);   // la lunita del casco aparece al tomar un fragmento
   progreso.paso = def.laboratorio ? 'libre' : 'jugar';
   progreso.tiempo = 0;
   progreso.avisoCanon = false;

@@ -95,6 +95,8 @@ El juego sabe si juegas con teclado y mouse o con el dedo (lo último que usaste
 | `js/despertar.js` | Diálogo inicial y cinemática del despertar |
 | `js/camara.js`, `js/entrada.js`, `js/ui.js` | Cámara, controles y HUD |
 | `js/dialogo.js` | Caja de diálogo de los carteles (pausa el juego) |
+| `js/cineIcaro.js` | Llegada a Ícaro (choque con el cinturón, caída a la grieta, despertar) y la charla de la cueva con la personaje misteriosa (planos del guion, suavizado exponencial) |
+| `js/cueva.js`, `js/misteriosa.js` | Decorado de la cueva de dunas (esfera invisible de R = 2 000 m) y la personaje misteriosa (modelo y gestos por código) |
 | `js/cineOvni.js` | Cinemática cartoon del ovni llegando a la arena (resorte amortiguado, estirar y aplastar) |
 | `herramientas/generar-sonidos.py` | Genera con matemática los sonidos de nave, tensión, jugador y espacio (`python3 herramientas/generar-sonidos.py`) |
 | `js/audio.js` + `sonidos/` | Sonidos (Web Audio): escucha los `emitir(...)` del juego, desbloqueo al primer toque, silencio y volúmenes |

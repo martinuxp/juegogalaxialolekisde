@@ -288,22 +288,26 @@ export function construirMundo(def) {
   });
   const rocas = (def.rocas || []).map(r => {
     const P = planetas[r.planeta];
-    return { c: puntoSobre(P, r.dir, r.h), R: r.R, roca: true, planeta: P };
+    return { c: puntoSobre(P, r.dir, r.h), R: r.R, roca: true, planeta: P, oculta: !!r.oculta };
   });
   definirMundo(planetas, [...islas, ...rocas]);
 
   // 2) planetas, mar, islas y rocas → dibujo
   for (const P of mundo.planetas) {
+    if (P.oculto) continue;            // chocas con él pero no se dibuja (lo dibuja el decorado del nivel)
     const m = new THREE.Mesh(planetGeo(P.R, P.color, P.seed || 11 + P.R * 7), toon(0xffffff, { map: null, vertexColors: true, flatShading: !!(P.base && paletaDe(P).plano) }));
     outline(m, 0.012); m.position.copy(P.c); grupo.add(m);
     if (P.mar) grupo.add(crearMar(P));
   }
   islas.forEach((s, i) => grupo.add(crearIsla(s, s.planeta, 40 + i)));
   for (const Rk of mundo.rocas) {
-    if (Rk.isla) continue;
+    if (Rk.isla || Rk.oculta) continue;
     const m = new THREE.Mesh(new THREE.IcosahedronGeometry(Rk.R, 1), toon(0x9a96a8, { flatShading: true }));
     outline(m, 0.05); m.position.copy(Rk.c); grupo.add(m);
   }
+
+  // 2·) decorado propio del nivel (ej. la cueva de Ícaro): una función que dibuja lo que quiera
+  if (def.decorado) def.decorado(grupo, mundo.planetas);
 
   // 2a) planeta lejano (solo dibujo, sin gravedad): el destino del cañón
   if (def.lejano) {

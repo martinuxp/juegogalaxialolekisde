@@ -36,10 +36,35 @@ function ajustarPantalla() {
 addEventListener('resize', ajustarPantalla);
 ajustarPantalla();
 
-scene.add(new THREE.HemisphereLight(0xcfe2ff, 0x2a2034, 1.15));
+const hemi = new THREE.HemisphereLight(0xcfe2ff, 0x2a2034, 1.15);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 1.7);
 sun.position.set(40, 70, 30);
 scene.add(sun);
+
+/* ---- AMBIENTE de cada nivel ----
+   Por defecto: espacio con estrellas, luz de cielo y un sol.
+   Un nivel puede cambiarlo con  ambiente: { ... }  (ej. la cueva de Ícaro):
+     cielo / suelo / luzCielo  → la luz "de cielo" (HemisphereLight)
+     sol                       → intensidad del sol (0 = apagado)
+     fondo                     → color del fondo
+     niebla: [color, cerca, lejos] → todo lo que está más lejos que "lejos" se pierde en ese color
+     estrellas: false          → sin estrellas (bajo tierra no se ven)
+     luzJugador: intensidad de la linterna del casco (jugador.js)
+     dirSol: [x, y, z] → desde dónde llega la luz del sol */
+let estrellas = null;
+export const AMBIENTE_BASE = { cielo: 0xcfe2ff, suelo: 0x2a2034, luzCielo: 1.15, sol: 1.7, fondo: 0x05060f, niebla: null, estrellas: true, luzJugador: 0, dirSol: [40, 70, 30] };
+export const ambienteActual = { ...AMBIENTE_BASE };
+export function aplicarAmbiente(a = {}) {
+  Object.assign(ambienteActual, AMBIENTE_BASE, a);
+  const A = ambienteActual;
+  hemi.color.setHex(A.cielo); hemi.groundColor.setHex(A.suelo); hemi.intensity = A.luzCielo;
+  sun.intensity = A.sol;
+  sun.position.set(...A.dirSol);
+  scene.background = new THREE.Color(A.fondo);
+  scene.fog = A.niebla ? new THREE.Fog(A.niebla[0], A.niebla[1], A.niebla[2]) : null;
+  if (estrellas) estrellas.visible = A.estrellas;
+}
 
 /* ---- materiales cartoon ---- */
 // "rampa" de 3 tonos para el material toon
@@ -160,7 +185,8 @@ export function cartel(texto, { ancho = 6, color = '#ffffff', fondo = 'rgba(10,1
   for (let i = 0; i < 1600; i++) { d.randomDirection().multiplyScalar(420 + Math.random() * 120); pts.push(d.x, d.y, d.z); }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false })));
+  estrellas = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false, fog: false }));
+  scene.add(estrellas);
 }
 {
   const cv = document.createElement('canvas'); cv.width = cv.height = 256;

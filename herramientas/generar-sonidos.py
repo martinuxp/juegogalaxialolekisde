@@ -312,6 +312,169 @@ def nivel_completo():
     return x
 
 
+# ---------------------------------------------------------------- Ícaro: llegada y cueva
+def eco(x, retardo, fuerza, veces=4):
+    """Eco: la misma señal, más tarde y más bajita, varias veces (como en una cueva)."""
+    y = x.copy()
+    d = int(retardo * SR)
+    for k in range(1, veces + 1):
+        if d * k >= len(x):
+            break
+        y[d * k:] += x[:len(x) - d * k] * fuerza ** k
+    return y
+
+
+def llegada_icaro():
+    """Música de la cinemática de llegada (7 s), calza con la imagen:
+    0 – 3,2 s  acercándote: colchón grave (Re) que crece + brillo agudo con trémolo (el calor del sol)
+    3,2 s      ¡CHOQUE! silencio de golpe (el choque lo pone choque.wav)
+    3,3 – 7 s  caída: glissando que BAJA (de La a Re, una quinta) mientras te hundes en la grieta"""
+    t = tiempo(7.0)
+    n = len(t)
+    crece = np.clip(t / 3.2, 0, 1) ** 2
+    antes = t < 3.2
+    colchon = sum(np.sin(2 * np.pi * f * t + i) / (1 + i * 0.6) for i, f in enumerate((73.42, 110.0, 146.83, 220.0)))
+    brillo = (np.sin(2 * np.pi * 1174.66 * t) + 0.7 * np.sin(2 * np.pi * 1318.5 * t)) * (0.5 + 0.5 * np.sin(2 * np.pi * 9 * t))
+    parte1 = (colchon * 0.3 + brillo * 0.05 * crece) * (0.25 + 0.75 * crece) * antes
+    parte1 *= np.minimum(1, (3.2 - t).clip(0) / 0.03 + 0)      # corte seco justo en el choque
+    tt = np.clip(t - 3.3, 0, None)
+    k = np.clip(tt / 3.4, 0, 1)
+    f = 220 * (146.83 / 220) ** k                              # baja una quinta mientras caes
+    caer = (oscilar(f) + 0.5 * oscilar(f * 1.5) + 0.3 * oscilar(f / 2)) * (t > 3.3)
+    caer *= np.minimum(1, tt / 0.4) * (1 - k) ** 1.5 * 0.35
+    viento = ruido_filtrado(n, 200, 1200, 101) * (t > 3.3) * np.sin(np.pi * k) * 0.6
+    return parte1 + caer + viento
+
+
+def choque():
+    """El choque con la piedra del cinturón: bombo muy grave + crujido de roca + piedritas que saltan."""
+    t = tiempo(1.6)
+    bombo = oscilar(30 + 70 * np.exp(-t / 0.06)) * np.exp(-t / 0.35)
+    crujido = ruido_filtrado(len(t), 400, 7000, 111) * np.exp(-t / 0.09) * 5
+    piedras = np.zeros_like(t)
+    r = np.random.default_rng(112)
+    for _ in range(22):
+        t0, f0 = 0.04 + r.random() * 0.9, 900 + r.random() * 2500
+        m = t >= t0
+        tt = t[m] - t0
+        piedras[m] += np.sin(2 * np.pi * f0 * tt) * np.exp(-tt / 0.012) * (0.3 + 0.7 * r.random()) * np.exp(-t0 / 0.6)
+    return (bombo * 1.4 + crujido + piedras) * np.minimum(1, t / 0.002)
+
+
+def caida_grieta():
+    """Caer por la grieta (3 s): viento cuyo 'tono' baja y que suena cada vez más fuerte."""
+    t = tiempo(3.0)
+    k = t / t[-1]
+    n = len(t)
+    capas = [ruido_filtrado(n, c * 0.7, c * 1.3, 120 + i) for i, c in enumerate((300, 600, 1200, 2400))]
+    # el brillo baja: primero suenan las capas agudas y después las graves (barrido hacia abajo)
+    x = sum(c * np.exp(-((k - (0.75 - 0.22 * i)) / 0.3) ** 2) for i, c in enumerate(capas))
+    return x * (0.3 + 0.7 * k) * np.minimum(1, (t[-1] - t) / 0.3)
+
+
+def golpe_cueva():
+    """Caer en la arena de la cueva: golpe sordo + arena que se escurre + eco de la cueva."""
+    t = tiempo(2.4)
+    pum = oscilar(40 + 60 * np.exp(-t / 0.04)) * np.exp(-t / 0.2)
+    arena = ruido_filtrado(len(t), 1500, 7000, 131) * np.exp(-t / 0.5) * (t > 0.05) * 1.2
+    x = (pum * 1.5 + ruido_filtrado(len(t), 80, 600, 132) * np.exp(-t / 0.08) * 3 + arena)
+    return eco(x * np.minimum(1, t / 0.003), 0.23, 0.35)
+
+
+def cueva_loop():
+    """AMBIENTE de la cueva (16 s, estéreo, loop sin costura).
+    · zumbido muy grave (Re 36,7 Hz + La 55 Hz) con batimientos lentos
+    · viento que aúlla: ruido filtrado cuya banda sube y baja despacio
+    · gotas que caen a lo lejos (un 'plic' agudo con eco)
+    Todo hace ciclos enteros en 16 s (múltiplos de 1/16 Hz), así empalma."""
+    dur = 16.0
+    t = tiempo(dur)
+    n = len(t)
+    q = lambda f: round(f * dur) / dur
+    izq = 0.2 * (np.sin(2 * np.pi * q(36.75) * t) + 0.7 * np.sin(2 * np.pi * q(55.0) * t) + 0.3 * np.sin(2 * np.pi * q(110.25) * t))
+    der = 0.2 * (np.sin(2 * np.pi * q(37.0) * t + 1) + 0.7 * np.sin(2 * np.pi * q(55.25) * t) + 0.3 * np.sin(2 * np.pi * q(110.0) * t + 2))
+    aullido = ruido_filtrado(n, 250, 700, 141) * (0.5 + 0.5 * np.sin(2 * np.pi * t / dur * 2) ** 2)
+    silbido = ruido_filtrado(n, 900, 1600, 142) * (0.5 + 0.5 * np.sin(2 * np.pi * t / dur * 3 + 1)) ** 3
+    izq += 0.35 * aullido + 0.12 * silbido
+    der += 0.35 * np.roll(aullido, n // 4) + 0.12 * np.roll(silbido, n // 3)
+    r = np.random.default_rng(143)
+    t2 = tiempo(dur * 2)
+    for j in range(7):
+        t0 = j * dur / 7 + r.random() * 1.5
+        f0 = q(1400 + r.random() * 1500)
+        m = t2 >= t0
+        tt = t2[m] - t0
+        g = np.zeros_like(t2)
+        g[m] = np.sin(2 * np.pi * f0 * (tt + 6 * tt * tt)) * np.exp(-tt / 0.025)
+        g = eco(g, 0.31, 0.45, 5) * (0.1 + 0.08 * r.random())
+        g = g[:n] + g[n:2 * n]
+        pan = r.random()
+        izq += g * (1 - pan); der += g * pan
+    return np.stack([izq, der])
+
+
+def misteriosa_loop():
+    """TEMA de la personaje misteriosa (16 s, estéreo, loop). Lento (60 por minuto),
+    en Re menor: un colchón suave y una cajita de música que toca una melodía
+    corta con eco. Elegante, un poco burlón, un poco peligroso."""
+    dur = 16.0
+    t = tiempo(dur)
+    n = len(t)
+    q = lambda f: round(f * dur) / dur
+    pad_i, pad_d = np.zeros(n), np.zeros(n)
+    # Re menor → Si bemol mayor (cambia a la mitad, con fundido suave)
+    mitad = 0.5 - 0.5 * np.cos(2 * np.pi * t / dur)            # 0 → 1 → 0
+    for f, peso in ((146.83, 1), (174.61, 0.8), (220.0, 0.7)):
+        pad_i += peso * (1 - mitad) * np.sin(2 * np.pi * q(f) * t)
+        pad_d += peso * (1 - mitad) * np.sin(2 * np.pi * q(f + 0.25) * t + 1)
+    for f, peso in ((116.54, 1), (146.83, 0.8), (174.61, 0.7)):
+        pad_i += peso * mitad * np.sin(2 * np.pi * q(f) * t + 2)
+        pad_d += peso * mitad * np.sin(2 * np.pi * q(f + 0.25) * t)
+    pad_i *= 0.09; pad_d *= 0.09
+    # melodía (segundo, nota): La Fa Mi Re ... Do# (la nota "rara" que la hace misteriosa)
+    mel = [(0, 880.0), (1, 698.46), (1.5, 659.25), (2, 587.33), (4, 880.0), (5, 932.33), (5.5, 880.0), (6, 554.37),
+           (8, 698.46), (9, 587.33), (9.5, 523.25), (10, 466.16), (12, 587.33), (13, 554.37), (13.5, 659.25), (14, 587.33)]
+    t2 = tiempo(dur * 2)
+    caja = np.zeros(len(t2))
+    for t0, f in mel:
+        caja += campana(t2, t0, q(f), 0.9) * 0.22
+    caja = eco(caja, 0.375, 0.4, 4)
+    caja = caja[:n] + caja[n:2 * n]
+    return np.stack([pad_i + caja, pad_d + np.roll(caja, int(0.012 * SR))])
+
+
+def ojos_rojos():
+    """Se encienden los ojos: un 'vuuum' grave que sube + un brillo agudo que tiembla."""
+    t = tiempo(1.4)
+    k = t / t[-1]
+    f = 50 * (120 / 50) ** np.minimum(1, k / 0.4)
+    vum = oscilar(f) * np.minimum(1, t / 0.3) * np.exp(-np.clip(t - 0.4, 0, None) / 0.4)
+    brillo = (np.sin(2 * np.pi * 1760 * t) + np.sin(2 * np.pi * 1864.66 * t)) * (0.5 + 0.5 * np.sin(2 * np.pi * 13 * t))
+    brillo *= np.minimum(1, t / 0.2) * np.exp(-t / 0.5) * 0.15
+    return eco(vum + brillo, 0.25, 0.3)
+
+
+def voz_misteriosa(f0, semilla):
+    """Una 'sílaba' de su voz: tono grave con un poquito de vibrato + soplo.
+    Suena una cada 3 letras mientras se escribe el texto (dialogo.js)."""
+    t = tiempo(0.11)
+    k = t / t[-1]
+    f = f0 * (1 + 0.04 * np.sin(2 * np.pi * 30 * t)) * (1 - 0.08 * k)
+    tono = oscilar(f) + 0.45 * oscilar(f * 2) + 0.2 * oscilar(f * 3)
+    soplo = ruido_filtrado(len(t), 600, 2500, semilla) * 0.6
+    env = np.sin(np.pi * k) ** 1.5
+    return (tono + soplo) * env
+
+
+def botas():
+    """Tomas las botas: soplido que sube + arpegio de campanitas (Re–La–Re–Fa#)."""
+    t = tiempo(1.6)
+    k = t / t[-1]
+    sube = ruido_filtrado(len(t), 600, 3000, 151) * np.sin(np.pi * np.minimum(1, k / 0.5)) * 0.5
+    x = sum(campana(t, 0.08 + i * 0.09, f, 0.6) for i, f in enumerate((587.33, 880, 1174.66, 1479.98)))
+    return sube + x
+
+
 def guardar_estereo(nombre, x, pico=0.8):
     x = x / (np.max(np.abs(x)) + 1e-9) * pico
     datos = (x.T * 32767).astype('<i2')               # muestras intercaladas: I D I D ...
@@ -321,7 +484,24 @@ def guardar_estereo(nombre, x, pico=0.8):
     print(f'{nombre:24s} {x.shape[1] / SR:5.2f} s (estéreo)')
 
 
+def generar_icaro():
+    guardar('llegada-icaro.wav', llegada_icaro(), 0.8)
+    guardar('choque.wav', choque())
+    guardar('caida-grieta.wav', caida_grieta(), 0.7)
+    guardar('golpe-cueva.wav', golpe_cueva(), 0.8)
+    guardar_estereo('cueva-loop.wav', cueva_loop(), 0.7)
+    guardar_estereo('misteriosa-loop.wav', misteriosa_loop(), 0.7)
+    guardar('ojos-rojos.wav', ojos_rojos(), 0.75)
+    for i, (f0, sem) in enumerate(((190, 161), (172, 162), (214, 163)), 1):
+        guardar(f'voz-misteriosa{i}.wav', voz_misteriosa(f0, sem), 0.6)
+    guardar('botas.wav', botas(), 0.75)
+
+
 if __name__ == '__main__':
+    import sys
+    if 'icaro' in sys.argv:            # python3 herramientas/generar-sonidos.py icaro → solo los de Ícaro
+        generar_icaro()
+        sys.exit()
     guardar('ovni-llegada.wav', ovni_llegada())
     guardar('ovni-boing.wav', ovni_boing())
     guardar('ovni-rayo.wav', ovni_rayo(), 0.7)
@@ -341,3 +521,5 @@ if __name__ == '__main__':
     guardar('carga-tarjeta.wav', carga_tarjeta(), 0.5)
     guardar('carga-lista.wav', carga_lista(), 0.7)
     guardar('nivel-completo.wav', nivel_completo(), 0.8)
+    # Ícaro (llegada y cueva)
+    generar_icaro()
