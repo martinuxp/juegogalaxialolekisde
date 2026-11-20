@@ -34,6 +34,7 @@ import { ETYPES, agregarEnemigo, quitarEnemigos } from './enemigos.js';
 import { player, hurtPlayer } from './jugador.js';
 import { ovni, ovniIrA, ovniFlotar, ovniRayo } from './ovni.js';
 import { cam } from './camara.js';
+import { iniciarLlegadaOvni, cortarCineOvni } from './cineOvni.js';
 
 export const pelea = {
   def: null, fase: 'nada', t: 0,
@@ -47,6 +48,7 @@ export const pelea = {
 
 /** Se llama al cargar un nivel. def.jefe = { planeta, dir, radio, entrada, alturaOvni } */
 export function prepararJefe(def) {
+  cortarCineOvni();
   limpiarOndas();
   pelea.def = def.jefe || null;
   pelea.fase = pelea.def ? 'espera' : 'nada';
@@ -80,6 +82,7 @@ function dirAlAzar(rmax) {
 
 /* ---------- el rayo baja enemigos: aparecen arriba y CAEN por gravedad ---------- */
 function bajarAlien() {
+  emitir('rayo');
   const e = agregarEnemigo('alien', pelea.def.planeta, dirAlAzar(pelea.def.radio - 3), pelea.def.alturaOvni - 3);
   e.dePelea = true;
   e.T = { ...e.T, aggro: 40 };   // en la arena todos te ven
@@ -88,10 +91,11 @@ function bajarAlien() {
 function empezar() {
   juego.checkpoint = { planeta: pelea.def.planeta, dir: pelea.def.entrada, mirar: pelea.arriba };
   cam.shake = 0.3;
+  emitir('arena');                         // audio.js: se apaga la música de Columba y entra la tensión
   if (ovni.estado === 'flota') { pelea.fase = 'oleada'; pelea.cola = 3; pelea.colaT = 0.6; return; }
   pelea.fase = 'llegada';
-  ovniIrA(pelea.hover, 3.2, () => {
-    ovniFlotar(pelea.hover, pelea.arriba);
+  // la primera vez: cinemática de caricatura (cineOvni.js). Al terminar, el ovni queda flotando.
+  iniciarLlegadaOvni(pelea.hover, pelea.arriba, pelea.centro, () => {
     if (pelea.fase === 'llegada') { pelea.fase = 'oleada'; pelea.cola = 3; pelea.colaT = 0.4; }
   });
 }
@@ -119,6 +123,7 @@ export function stepJefe(dt) {
         ovniRayo(pelea.def.alturaOvni);
         const j = agregarEnemigo('jefe', pelea.def.planeta, pelea.arriba, pelea.def.alturaOvni - 3);
         j.dePelea = true; j.fase = 'cae'; j.t = 0; j.ataques = 0; j.mareado = 0;
+        emitir('rayo');
         pelea.jefe = j;
         emitir('jefe', { hp: j.hp, max: j.T.hp });
       }
@@ -128,6 +133,7 @@ export function stepJefe(dt) {
     case 'ganada':
       if (!pelea.huyo && pelea.t > 0.9) {
         pelea.huyo = true;
+        emitir('ovniHuye');
         ovniIrA(pelea.destinoHuida, 5, () => ovniFlotar(pelea.destinoHuida, pelea.arribaHuida));
       }
       break;

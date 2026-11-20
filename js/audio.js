@@ -53,7 +53,19 @@ const SONIDOS = {
   jefeEntrada: { archivo: 'boss1-fadein.mp3',  vol: 1, musica: true },              // aparece el jefe
   jefeLoop:    { archivo: 'boss1-loop.mp3',    vol: 1, musica: true, loop: true },  // toca el suelo: se repite
   jefeSalida:  { archivo: 'boss1-fadeout.mp3', vol: 1, musica: true },              // lo derrotas
-  // FALTAN (si llegan, se agregan aquí y ya suenan): salto, puno, musicaMenu, musicaColumba
+  // MÚSICA de fondo de cada planeta (el nivel dice cuál con  musica: 'columba').
+  // loopDe = [inicio, fin] en segundos: la canción termina en silencio, así que el loop
+  // da la vuelta antes de ese silencio para no dejar un hueco.
+  columba:     { archivo: 'columba.mp3', vol: 0.8, musica: true, loop: true, loopDe: [0.35, 54.8] },
+  // TENSIÓN al entrar a la arena y SONIDOS DE NAVE: los generamos nosotros con
+  // herramientas/generar-sonidos.py (sumas de ondas, nada grabado)
+  tension:      { archivo: 'tension-loop.wav',  vol: 0.9, musica: true, loop: true },
+  tensionGolpe: { archivo: 'tension-golpe.wav', vol: 0.9 },
+  ovniLlega:    { archivo: 'ovni-llegada.wav',  vol: 0.8 },
+  ovniBoing:    { archivo: 'ovni-boing.wav',    vol: 0.7 },
+  ovniRayo:     { archivo: 'ovni-rayo.wav',     vol: 0.45, tono: 0.06 },
+  ovniHuye:     { archivo: 'ovni-huida.wav',    vol: 0.7 },
+  // FALTAN (si llegan, se agregan aquí y ya suenan): salto, puno, musicaMenu
 };
 const VOCES = ['voz1', 'voz2', 'voz3', 'voz4', 'voz5', 'voz6'];
 
@@ -106,7 +118,7 @@ async function cargar(nombre, def) {
     const bytes = await r.arrayBuffer();
     // decodeAudioData con callbacks: así funciona también en Safari viejo
     buffers[nombre] = await new Promise((ok, mal) => ctx.decodeAudioData(bytes, ok, mal));
-    if (def.loop) bordes[nombre] = bordesDelLoop(buffers[nombre]);
+    if (def.loop) bordes[nombre] = def.loopDe || bordesDelLoop(buffers[nombre]);
   } catch (e) { console.warn('[audio] no pude cargar', def.archivo, e); }
 }
 if (ctx) for (const [n, d] of Object.entries(SONIDOS)) cargar(n, d);
@@ -130,7 +142,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) desp
 
 /* ---------- tocar un sonido ----------
    opciones: vol (multiplica), tono (velocidad de reproducción: 2 = una octava más agudo),
-             cuando (segundo del reloj de audio en que parte; por defecto, ya) */
+             cuando (segundo del reloj de audio en que parte; por defecto, ya),
+             subir (segundos que tarda en aparecer el volumen: fade in) */
 export function sonar(nombre, op = {}) {
   const def = SONIDOS[nombre], buf = buffers[nombre];
   if (!ctx || !def || !buf || (ctx.state !== 'running' && !pedido)) return null;
@@ -141,6 +154,7 @@ export function sonar(nombre, op = {}) {
   s.playbackRate.value = (op.tono || 1) * azar;
   const g = ctx.createGain();
   g.gain.value = def.vol * (op.vol ?? 1);
+  if (op.subir) { const v = g.gain.value; g.gain.value = 0; g.gain.setTargetAtTime(v, ctx.currentTime, op.subir / 3); }
   if (def.loop) { s.loop = true; [s.loopStart, s.loopEnd] = bordes[nombre]; }
   s.connect(g).connect(def.musica ? musica : efectos);
   s.start(Math.max(op.cuando || 0, ctx.currentTime), def.loop ? s.loopStart : 0);
@@ -181,8 +195,49 @@ escuchar('jefeAterriza', () => {
   tema.loop = sonar('jefeLoop', { cuando: tema.finEntrada });
 });
 escuchar('jefeVencido', () => { callarTema(0.15); sonar('jefeSalida'); });
-escuchar('reaparecer', () => callarTema(0.6));       // perdiste en la pelea: la pelea (y su música) parten de nuevo
-escuchar('nivel', () => callarTema(0.3));
+
+/* =========================================================
+   MÚSICA DE FONDO Y ZONA DE COMBATE
+   ---------------------------------------------------------
+   zona 'calma'   → suena la música del planeta (columba.mp3)
+   zona 'combate' → la música se apaga en 1,5 s, golpe grave y
+                    entra el loop de TENSIÓN, hasta que aparece
+                    el jefe (ahí parte su música, arriba)
+   Al ganar, la música del planeta vuelve cuando termina el
+   fadeout del jefe. Si pierdes, vuelve de inmediato.
+   ========================================================= */
+const fondo = { nombre: null, h: null, zona: 'calma', calmaDesde: 0, tension: null };
+function callarTension(seg) { apagar(fondo.tension, seg); fondo.tension = null; }
+function calma(desde = 0) { fondo.zona = 'calma'; fondo.calmaDesde = desde; callarTension(0.8); }
+
+escuchar('nivel', def => {
+  callarTema(0.3); calma();
+  if (fondo.nombre !== (def.musica || null)) { apagar(fondo.h, 0.3); fondo.h = null; }
+  fondo.nombre = def.musica || null;
+});
+escuchar('arena', () => {                              // jefe.js: pisaste la arena
+  fondo.zona = 'combate';
+  sonar('tensionGolpe');
+  if (!fondo.tension) fondo.tension = sonar('tension', { subir: 1.5 });
+});
+escuchar('jefe', d => { if (d) callarTension(0.8); });                 // aparece el jefe: manda su música
+escuchar('reaparecer', () => { callarTema(0.6); if (fondo.zona === 'combate') calma(); });   // la pelea parte de nuevo
+escuchar('jefeVencido', () => calma(ctx ? ctx.currentTime + (buffers.jefeSalida ? buffers.jefeSalida.duration : 0) : 0));
+
+// la nave (cineOvni.js y jefe.js)
+escuchar('ovniLlega', () => sonar('ovniLlega'));
+escuchar('ovniBoing', () => sonar('ovniBoing'));
+escuchar('rayo', () => sonar('ovniRayo'));
+escuchar('ovniHuye', () => sonar('ovniHuye'));
+
+/** Cada cuadro: ¿debería sonar la música del planeta? Si sí y no suena, entra suave; si no, sale suave. */
+function dirigirFondo() {
+  const jugando = ['juego', 'cartel', 'cine'].includes(juego.modo);
+  const quiere = jugando && fondo.nombre && fondo.zona === 'calma' && ctx.currentTime >= fondo.calmaDesde;
+  if (quiere && !fondo.h) fondo.h = sonar(fondo.nombre, { subir: 2.5 });
+  if (!quiere && fondo.h) { apagar(fondo.h, 1.5); fondo.h = null; }
+  if (!jugando && fondo.tension) callarTension(0.5);
+}
 
 /* =========================================================
    QUÉ SUENA EN CADA EVENTO
@@ -224,6 +279,7 @@ export function actualizarAudio(dt) {
   if (!ctx) return;
   musica.gain.setTargetAtTime(ajustes.volMusica * (juego.modo === 'cartel' ? 0.4 : 1), ctx.currentTime, 0.2);
   if ((tema.loop || tema.entrada) && !['juego', 'cartel', 'cine'].includes(juego.modo)) callarTema(0.5);   // volviste al menú
+  dirigirFondo();
   if (juego.modo !== 'juego' || !juego.jugador) return;
   charla -= dt;
   if (charla > 0) return;

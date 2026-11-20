@@ -10,6 +10,7 @@
      · fecha: el día del cambio (hora de Chile)
    ========================================================= */
 export const HISTORIAL = [
+  { v: '0.13', fecha: '20 nov', cambios: 'Música de Columba, tensión al entrar a la arena y cinemática cartoon del ovni con sonidos de nave' },
   { v: '0.12', fecha: '20 nov', cambios: 'Música del primer jefe: entrada al aparecer, loop al tocar el suelo y salida al ganarle' },
   { v: '0.11', fecha: '20 nov', cambios: 'Sonidos: dash, pisotón, daño, cañón, voces de los aliens, carteles y botones; silencio (M) y volúmenes' },
   { v: '0.10', fecha: '19 nov', cambios: 'Campo de fuerza del cañón: los muros laterales ya no se ven torcidos' },

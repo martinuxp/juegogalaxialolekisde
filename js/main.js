@@ -34,6 +34,7 @@ import { limpiarEntrada, input } from './entrada.js';
 import { pintarIconos } from './iconos.js';
 import './dialogo.js';
 import { actualizarAudio, _audio } from './audio.js';
+import { actualizarCineOvni } from './cineOvni.js';
 import { NIVELES, LABORATORIO } from './niveles/index.js';
 import { abrirEditor, frameEditor, conectarEditor, volverAlEditor, ed } from './editor/editor.js';
 
@@ -157,10 +158,11 @@ function frame(now) {
   updateEnemyVisuals(tiempo);
   stepFx(jugando ? dtv : 0);
   animarMundo(dt, tiempo);
-  animarOvni(jugando ? dtv : 0, tiempo);
+  animarOvni(jugando ? dtv : (juego.modo === 'cine' ? dt : 0), tiempo);
   actualizarEscape(dt);
 
-  if (!actualizarDespertar(vertical.matches ? 0 : dt)) updateCamera(dt);
+  const dtCine = vertical.matches ? 0 : dt;           // en vertical, la cinemática también espera
+  if (!actualizarDespertar(dtCine) && !actualizarCineOvni(dtCine)) updateCamera(dt);
   renderer.render(scene, camera);
   if (jugando) actualizarHUD(dt);
 }
