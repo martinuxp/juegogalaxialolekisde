@@ -107,7 +107,7 @@ export default {
       planeta: 0, dir: camino(5.5, -2.2), icono: 'mover',
       paginas: [
         'Isla de las Flores.\nEl cañón está al otro lado de Columba: sigue el camino de islas.',
-        'Muévete con el joystick (o WASD).\nArrastra a la derecha para girar la cámara.',
+        'Muévete con {mover}.\nPara girar la cámara, {camara}.',
         'Aquí la gravedad apunta al centro del planeta. Por eso puedes caminar alrededor de él sin caerte.',
       ],
     },
@@ -115,7 +115,7 @@ export default {
       planeta: 0, dir: camino(7.5, 2), icono: 'salto',
       paginas: [
         'Entre las islas hay agua. El agua no te sostiene: si caes, vuelves a tierra firme.',
-        'Toca SALTO (Espacio) para saltar.\nSi lo mantienes apretado, subes más alto.',
+        'Aprieta {salto} para saltar.\nSi lo mantienes apretado, subes más alto.',
         'Subes, la gravedad te frena hasta quedar quieto y luego te hace caer. Es la misma g = G·M/r² en todo el planeta.',
       ],
     },
@@ -123,14 +123,14 @@ export default {
       planeta: 0, dir: camino(S.enemigos - 4.5, -2.5), icono: 'puno',
       paginas: [
         'Cuidado: esos gatos verdes son aliens de Ícaro. Bajaron del ovni que da vueltas al planeta.',
-        'En el suelo, PUÑO (J) las golpea.\nTambién puedes caerles encima.',
+        'En el suelo, {puno} las golpea.\nTambién puedes caerles encima.',
       ],
     },
     {
       planeta: 0, dir: camino(S.enemigos + 5, -2.2), icono: 'dash',
       paginas: [
         'La siguiente isla está demasiado lejos para un salto.',
-        'Salta y, cuando ya vayas cayendo, toca DASH (K o Shift): sales disparad@ hacia adelante.',
+        'Salta y, cuando ya vayas cayendo, aprieta {dash}: sales disparad@ hacia adelante.',
         'El dash deja tu velocidad vertical en cero. Si lo usas cayendo, frenas la caída y llegas mucho más lejos.',
         'Solo tienes un dash en el aire. Se recarga al tocar el suelo.',
       ],
@@ -139,7 +139,7 @@ export default {
       planeta: 0, dir: camino(S.arena - 12.5, 3), icono: 'pisoton',
       paginas: [
         'Isla de la Arena.\nEl ovni de Ícaro no te va a dejar pasar tan fácil.',
-        'En el aire, toca PISOTÓN (J): dejas de avanzar y caes en picada a 40 m/s.',
+        'En el aire, aprieta {pisoton}: dejas de avanzar y caes en picada a 40 m/s.',
         'El jefe tiene un casco duro. Saltarle encima, el puño o el dash no le hacen nada.',
         'Cuando salte y caiga, queda mareado y abre el casco. Ahí, ¡pisotón!',
         'Al caer suelta una onda que corre por el suelo. Si estás en el aire, pasa por debajo de ti.',

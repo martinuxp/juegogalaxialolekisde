@@ -60,13 +60,18 @@ mantenga su radio y tenga el período `T = 2πr/v`.
 
 ## Controles
 
-| Acción | Celular | Teclado |
+El juego sabe si juegas con teclado y mouse o con el dedo (lo último que usaste). En los carteles se escribe `{salto}`, `{puno}`, `{pisoton}`, `{dash}`, `{leer}`, `{mover}`, `{camara}`, `{super}` y se cambia solo por «SALTO» o «Espacio», etc. (`conControles` en `js/entrada.js`).
+
+
+| Acción | Celular | PC |
 |---|---|---|
 | Mover | joystick (mitad izquierda) | WASD / flechas |
-| Cámara | arrastrar a la derecha | Q / E, mouse, R para centrar |
+| Cámara | arrastrar a la derecha | mantener clic izquierdo y mover el mouse; Tab centra |
 | Saltar | SALTO | Espacio |
-| Puño / pisotón (en el aire) / leer cartel | botón del guante (cambia de ícono) | J |
-| Dash | DASH | K / Shift |
+| Pisotón | botón del guante en el aire | Espacio otra vez en el aire (si vas cayendo a menos de 1 m del suelo, cuenta como salto guardado) |
+| Puño | botón del guante en el suelo | clic sin arrastrar o F |
+| Leer cartel | botón del guante junto al cartel | E (aparece una teclita E en el botón) |
+| Dash | DASH | Shift / K |
 | Cargar cañón / supersalto | botón del cañón (mantener y soltar) | L |
 | Panel de física | DEBUG | G |
 
