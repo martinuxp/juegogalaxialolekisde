@@ -56,6 +56,7 @@ export default {
   numero: 1,
   nombre: 'Columba',
   ley: 'Gravitación de Newton',
+  musica: 'columba',              // audio.js: música de fondo (se apaga en la arena)
   superDesdeInicio: false,
 
   planetas: [
