@@ -15,7 +15,7 @@
    ========================================================= */
 import { juego, ajustes, guardarAjustes, emitir, escuchar } from './estado.js';
 import { CFG, DIFICULTADES } from './config.js';
-import { mundo } from './fisica.js';
+import { mundo, GM } from './fisica.js';
 import { construirMundo, piezas } from './mundo.js';
 import { spawnEnemies } from './enemigos.js';
 import { player, respawnPlayer, mostrarLunita } from './jugador.js';
@@ -58,6 +58,21 @@ export function cargarNivel(def) {
 export function stepNivel(dt) {
   progreso.tiempo += dt;
   const def = juego.nivel;
+
+  // META "escapar": ¿ya tienes energía para no volver nunca?
+  //   energía por kilo = ½·v² − G·M/r   (movimiento − lo que pide la gravedad)
+  //   si es ≥ 0, la gravedad ya no te puede traer de vuelta: es la MISMA condición que v ≥ v_esc,
+  //   pero sirve en cualquier punto del vuelo (no solo al despegar).
+  // Esperamos a que estés 10 m arriba del mar, para que se alcance a ver el despegue.
+  if (def.meta && def.meta.escapar && progreso.paso === 'jugar' && player.state === 'vuelo') {
+    const P = mundo.planetas[0];
+    const r = player.pos.distanceTo(P.c);
+    const energia = 0.5 * player.vel.lengthSq() - GM(P) / r;
+    if (energia >= 0 && r > (P.mar || P.R) + 10) {
+      progreso.paso = 'escapando';
+      emitir('escapo', { v: player.vel.length(), r });
+    }
+  }
 
   // ¿está parado sobre el cañón?
   const c = piezas.canon;
@@ -126,10 +141,19 @@ escuchar('jefeVencido', () => {
   if (progreso.murosT < 0) progreso.murosT = 0;
 });
 
+/** Lo llama la pantalla de carga al terminar (cineDespegue.js): el nivel queda completo. */
+export function completarNivel() {
+  const def = juego.nivel;
+  progreso.paso = 'completo';
+  ajustes.nivelesCompletos = Math.max(ajustes.nivelesCompletos, def.numero);
+  guardarAjustes();
+  emitir('completo', { def, tiempo: progreso.tiempo });
+}
+
 // ¿aterrizó en el planeta de la meta?
 escuchar('aterrizaje', solido => {
   const def = juego.nivel;
-  if (!def || progreso.paso !== 'jugar' || !def.meta) return;
+  if (!def || progreso.paso !== 'jugar' || !def.meta || def.meta.aterrizarEn == null) return;
   if (solido === mundo.planetas[def.meta.aterrizarEn]) {
     progreso.paso = 'completo';
     ajustes.nivelesCompletos = Math.max(ajustes.nivelesCompletos, def.numero);

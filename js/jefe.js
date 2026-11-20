@@ -32,7 +32,7 @@ import { juego, emitir, escuchar } from './estado.js';
 import { mundo, superficieEn } from './fisica.js';
 import { ETYPES, agregarEnemigo, quitarEnemigos } from './enemigos.js';
 import { player, hurtPlayer } from './jugador.js';
-import { ovni, ovniIrA, ovniFlotar, ovniRayo } from './ovni.js';
+import { ovni, ovniIrA, ovniFlotar, ovniRayo, ocultarOvni } from './ovni.js';
 import { cam } from './camara.js';
 import { iniciarLlegadaOvni, cortarCineOvni } from './cineOvni.js';
 
@@ -134,7 +134,7 @@ export function stepJefe(dt) {
       if (!pelea.huyo && pelea.t > 0.9) {
         pelea.huyo = true;
         emitir('ovniHuye');
-        ovniIrA(pelea.destinoHuida, 5, () => ovniFlotar(pelea.destinoHuida, pelea.arribaHuida));
+        ovniIrA(pelea.destinoHuida, 5, () => ocultarOvni());
       }
       break;
     case 'bajaJefe':
@@ -149,15 +149,14 @@ function ganar() {
   emitir('jefe', null);
   // los aliens que quedan se rinden (se desvanecen)
   for (const e of juego.enemigos) if (e.dePelea && !e.dead) { e.dead = true; e.dieT = 0.3; }
-  // el ovni escapa a Ícaro: te muestra a dónde tienes que ir
-  const I = mundo.planetas.find(P => P !== pelea.P) || pelea.P;
-  // flota a un costado de Ícaro (no detrás), para que lo veas desde el cañón
-  const haciaI = I.c.clone().sub(pelea.P.c).normalize();
-  const lado = new V3().crossVectors(haciaI, new V3(0, 1, 0));
+  // el ovni escapa hacia Ícaro (el planeta lejano): te muestra hacia dónde tienes que ir.
+  // Se aleja 260 m en esa dirección, un poco de lado, y ahí desaparece (ovni.js lo esconde al llegar).
+  const L = juego.nivel.lejano;
+  const hacia = L ? L.dir.clone() : pelea.arriba.clone();
+  const lado = new V3().crossVectors(hacia, new V3(0, 1, 0));
   if (lado.lengthSq() < 1e-4) lado.set(1, 0, 0);
-  const arribaI = haciaI.multiplyScalar(0.3).addScaledVector(lado.normalize(), 0.95).normalize();
-  pelea.destinoHuida = I.c.clone().addScaledVector(arribaI, I.R + 7);
-  pelea.arribaHuida = arribaI;
+  pelea.destinoHuida = pelea.P.c.clone().addScaledVector(hacia, 260).addScaledVector(lado.normalize(), 40);
+  pelea.arribaHuida = hacia;
   cam.shake = 0.8;
   emitir('jefeVencido');
 }

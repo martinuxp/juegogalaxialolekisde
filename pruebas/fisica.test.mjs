@@ -55,22 +55,26 @@ const vesc2 = velocidadEscape(P, r0);
 revisar('con g×2, v_esc sube √2 veces', cerca(vesc2 / vesc, Math.SQRT2, 1e-9), `${vesc.toFixed(2)} → ${vesc2.toFixed(2)}`);
 mundo.gravMul = 1;
 
-/* ---- 4. Nivel 1: el cañón de Columba llega a Ícaro con menos que v_esc ---- */
+/* ---- 4. Nivel 1: Ícaro está lejos → desde el cañón hay que pasar v_esc ---- */
 const { default: nivel1 } = await import('../js/niveles/nivel1-columba.js');
 {
-  const [C, I] = nivel1.planetas;
-  definirMundo([C, I], []);
-  const dir = I.c.clone().sub(C.c).normalize();
+  const [C] = nivel1.planetas;
+  definirMundo([C], []);
+  const dir = nivel1.lejano.dir.clone().normalize();
   const islaCanon = nivel1.islas.find(i => i.canon);
   const boca = C.c.clone().addScaledVector(dir, (C.mar + islaCanon.alto) + 1.7);
   const ve = velocidadEscape(C, boca.length());
-  let minimo = null;
-  for (let v = 1; v < ve * 1.2; v += 0.1) {
-    if (simularTrayectoria(boca, dir.clone().multiplyScalar(v), { tMax: 30, cadaN: 1000 }).choca === I) { minimo = v; break; }
-  }
-  revisar('desde el cañón se puede llegar a Ícaro', minimo !== null);
-  if (minimo) revisar('la velocidad mínima para llegar es menor que v_esc', minimo < ve,
-    `mínima ${minimo.toFixed(1)} m/s = ${(100 * minimo / ve).toFixed(0)}% de v_esc (${ve.toFixed(1)} m/s)`);
+  const energia = (pos, vel) => 0.5 * vel.lengthSq() - GM(C) / pos.length();
+  // con 95 % de v_esc: la energía es negativa y la simulación vuelve a Columba
+  const bajo = simularTrayectoria(boca, dir.clone().multiplyScalar(ve * 0.95), { tMax: 400, cadaN: 100000 });
+  revisar('desde el cañón, con 95% de v_esc vuelves a Columba', bajo.choca === C, `tarda ${bajo.tiempo.toFixed(0)} s`);
+  // con 101 %: energía ≥ 0 desde el principio, y se mantiene (se conserva) durante el vuelo
+  const pos = boca.clone(), vel = dir.clone().multiplyScalar(ve * 1.01);
+  const E0 = energia(pos, vel);
+  for (let i = 0; i < 120 * 20; i++) pasoNewton(pos, vel, 1 / 120);
+  revisar('con 101% de v_esc la energía es ≥ 0 (escapas)', E0 >= 0 && energia(pos, vel) >= 0,
+    `E inicial ${E0.toFixed(1)} · a los 20 s ${energia(pos, vel).toFixed(1)} J/kg · v_esc = ${ve.toFixed(1)} m/s`);
+  revisar('la barra del cañón alcanza v_esc', ve < 60, `tope 60 m/s`);
 }
 
 /* ---- 5. Muros (cajas): el jugador no los atraviesa ---- */

@@ -215,7 +215,7 @@ export function stepPlayer(dt) {
   }
   // PUÑO del PC (clic o F): solo en el suelo; en el aire no hace nada
   if (input.punoQ > 0 && p.grounded && (p.state === 'normal' || p.state === 'dash')) {
-    input.punoQ = 0; p.state = 'punch'; p.t = 0; p.punchHit.clear();
+    input.punoQ = 0; p.state = 'punch'; p.t = 0; p.punchHit.clear(); emitir('puno');
   }
   // PISOTÓN del PC: Espacio estando en el aire ("doble espacio")
   if (input.poundQ > 0) {
@@ -235,7 +235,7 @@ export function stepPlayer(dt) {
   // ATAQUE: en el suelo = puño; en el aire = pisotón
   if (input.atkQ > 0 && (p.state === 'normal' || p.state === 'dash')) {
     input.atkQ = 0;
-    if (p.grounded) { p.state = 'punch'; p.t = 0; p.punchHit.clear(); }
+    if (p.grounded) { p.state = 'punch'; p.t = 0; p.punchHit.clear(); emitir('puno'); }
     else { p.state = 'poundWind'; p.t = 0; }
   }
   // DASH (uno en el aire hasta tocar suelo)
@@ -251,6 +251,7 @@ export function stepPlayer(dt) {
     input.jumpQ = 0; p.coyote = 0; vy = CFG.jump; p.jumping = true; p.jumpCut = false; p.grounded = false;
     if (p.state === 'dash') _hv.copy(p.dashDir).multiplyScalar(CFG.dashSpeed * 0.75);   // dash + salto = salto largo
     p.state = 'normal'; p.land = -0.25;
+    emitir('salto');
   }
   // salto variable: si sueltas el botón antes, sube menos
   if (p.jumping && !input.jumpHeld && vy > 0 && !p.jumpCut) { vy *= CFG.jumpCut; p.jumpCut = true; }
@@ -290,6 +291,8 @@ export function stepPlayer(dt) {
   if (p.grounded) {
     p.coyote = CFG.coyote; p.airDash = true; p.jumping = false;
     if (!was) p.land = Math.min(0.35, 0.1 + Math.abs(vy) * 0.01);
+    // tocar el suelo: avisamos con qué rapidez caías (audio.js decide qué tan fuerte suena)
+    if (!was && p.state !== 'pound' && p.state !== 'dash') emitir('tocaSuelo', -vy);
     if (p.state === 'pound') {
       p.state = 'poundLand'; p.t = 0;
       shockwave(_t2.copy(p.pos).addScaledVector(p.up, -p.r), p.up, null); cam.shake = 0.35;

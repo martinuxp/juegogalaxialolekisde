@@ -28,6 +28,7 @@ export const piezas = {    // cosas del nivel que nivel.js necesita mover o most
   flores: null,
   muros: [],        // { mesh, solido, base }: los muros que baja el botón (o el campo de fuerza que apaga el jefe)
   vegetacion: null,
+  lejano: null,     // { mesh, pos, R, nombre }: planeta del fondo al que apunta el cañón
   boton: null,      // { mesh, pos, arriba, apretado }
 };
 
@@ -57,7 +58,7 @@ export function limpiarMundo() {
   scene.remove(grupo);
   grupo = null;
   piezas.fragmento = null; piezas.canon = null; piezas.carteles = []; piezas.flores = null;
-  piezas.muros = []; piezas.boton = null; piezas.vegetacion = null;
+  piezas.muros = []; piezas.boton = null; piezas.vegetacion = null; piezas.lejano = null;
   juego.pads = null;
 }
 
@@ -302,6 +303,17 @@ export function construirMundo(def) {
     if (Rk.isla) continue;
     const m = new THREE.Mesh(new THREE.IcosahedronGeometry(Rk.R, 1), toon(0x9a96a8, { flatShading: true }));
     outline(m, 0.05); m.position.copy(Rk.c); grupo.add(m);
+  }
+
+  // 2a) planeta lejano (solo dibujo, sin gravedad): el destino del cañón
+  if (def.lejano) {
+    const L = def.lejano;
+    const pos = (mundo.planetas[0] ? mundo.planetas[0].c.clone() : new V3()).addScaledVector(L.dir, L.dist);
+    const m = new THREE.Mesh(planetGeo(L.R, L.color, L.seed || 77), toon(0xffffff, { map: null, vertexColors: true }));
+    outline(m, 0.01); m.position.copy(pos);
+    const brillo = halo('rgba(255,170,90,.35)', L.R * 3.2); brillo.position.copy(pos);
+    grupo.add(m, brillo);
+    piezas.lejano = { mesh: m, pos, R: L.R, nombre: L.nombre };
   }
 
   // 2b) vegetación (solo decoración, no choca)

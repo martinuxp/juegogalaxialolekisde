@@ -145,5 +145,11 @@ export function animarOvni(dt, t) {
   }
 }
 
+/** El ovni se fue (llegó lejos rumbo a Ícaro): deja de dibujarse y de moverse. */
+export function ocultarOvni() {
+  if (ovni.obj) ovni.obj.visible = false;
+  ovni.estado = 'nada'; ovni.vel.set(0, 0, 0); ovni.rayo = 0;
+}
+
 /** Prender/apagar el rayo (largo en metros). */
 export function ovniRayo(largo) { ovni.rayo = largo; }

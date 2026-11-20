@@ -105,7 +105,8 @@ export function nivelDesdeEditor(n) {
     superDesdeInicio: !!n.superDesdeInicio,
     planetas, islas: [], rocas: [], enemigos: [], carteles: [], notas: [],
     objetivos: {},
-    meta: n.meta && n.meta.aterrizarEn != null && n.meta.aterrizarEn < planetas.length ? { aterrizarEn: n.meta.aterrizarEn } : null,
+    meta: n.meta && n.meta.escapar ? { escapar: true }
+      : n.meta && n.meta.aterrizarEn != null && n.meta.aterrizarEn < planetas.length ? { aterrizarEn: n.meta.aterrizarEn } : null,
   };
   for (const o of n.objetos || []) {
     if (o.planeta >= planetas.length) continue;
@@ -129,6 +130,7 @@ export function nivelDesdeEditor(n) {
   const ex = n.extras || {};
   if (ex.vegetacion) def.vegetacion = { ...ex.vegetacion, camino: ex.vegetacion.camino && aV3(ex.vegetacion.camino) };
   if (ex.ovni) def.ovni = { ...ex.ovni, normal: aV3(ex.ovni.normal).normalize(), empieza: aV3(ex.ovni.empieza) };
+  if (ex.lejano) def.lejano = { ...ex.lejano, dir: aV3(ex.lejano.dir).normalize() };
   if (ex.jefe) def.jefe = { ...ex.jefe, dir: aV3(ex.jefe.dir).normalize(), entrada: aV3(ex.jefe.entrada).normalize() };
   return def;
 }
@@ -148,7 +150,7 @@ export function editorDesdeNivel(def) {
       return q;
     }),
     objetos: [],
-    meta: def.meta ? { aterrizarEn: def.meta.aterrizarEn } : null,
+    meta: def.meta ? (def.meta.escapar ? { escapar: true } : { aterrizarEn: def.meta.aterrizarEn }) : null,
   };
   const add = (tipo, o, extra = {}) => n.objetos.push({ tipo, planeta: o.planeta, dir: aArr(o.dir.clone().normalize()), ...extra });
   for (const s of def.islas || []) add('isla', s, { alto: s.alto, ancho: s.ancho, ...(s.veg ? { veg: s.veg } : {}), ...(s.canon ? { canon: true } : {}) });
@@ -160,6 +162,7 @@ export function editorDesdeNivel(def) {
   const extras = {};
   if (def.vegetacion) extras.vegetacion = { ...def.vegetacion, camino: def.vegetacion.camino && aArr(def.vegetacion.camino) };
   if (def.ovni) extras.ovni = { ...def.ovni, normal: aArr(def.ovni.normal), empieza: aArr(def.ovni.empieza) };
+  if (def.lejano) extras.lejano = { ...def.lejano, dir: aArr(def.lejano.dir) };
   if (def.jefe) extras.jefe = { ...def.jefe, dir: aArr(def.jefe.dir), entrada: aArr(def.jefe.entrada) };
   if (Object.keys(extras).length) n.extras = extras;
   if (def.fragmento) add('fragmento', def.fragmento, { h: def.fragmento.h || 1.4 });
