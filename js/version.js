@@ -10,6 +10,7 @@
      · fecha: el día del cambio (hora de Chile)
    ========================================================= */
 export const HISTORIAL = [
+  { v: '0.10', fecha: '19 nov', cambios: 'Campo de fuerza del cañón: los muros laterales ya no se ven torcidos' },
   { v: '0.9', fecha: '19 nov', cambios: 'Mouse atrapado para la cámara (Esc lo suelta), Ctrl = pisotón y versión en el inicio' },
   { v: '0.8', fecha: '19 nov', cambios: 'Controles de PC: clic o F = puño, doble Espacio = pisotón, E = leer, Tab = centrar' },
   { v: '0.7', fecha: '19 nov', cambios: 'Columba con vegetación, ovni de Ícaro en órbita y mini jefe alien' },
