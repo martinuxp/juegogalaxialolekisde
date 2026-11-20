@@ -19,7 +19,7 @@
    La gravedad solo cambia vy. El joystick solo cambia _hv.
    ========================================================= */
 import { THREE, V3, clamp, damp, tangent, anyPerp, moveTowards, rng } from './util.js';
-import { scene, toon, outline, orient, faceNormal, camera } from './escena.js';
+import { scene, toon, outline, orient, faceNormal, camera, ambienteActual } from './escena.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { CFG } from './config.js';
 import { makeBody, computeGravity, updateUp, collide, mundo, superficieEn } from './fisica.js';
@@ -123,6 +123,19 @@ function headTex() {   // planetita: océano + continentes
   }
   bow.add(outline(new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), pink), 0.15));
   pl.acc.lazo = bow;
+  // BOTAS DE SALTO (Ícaro): te las deja la personaje de la cueva; con ellas sale el súper salto sin cañón
+  pl.botas = new THREE.Group(); pl.botas.visible = false; pl.body.add(pl.botas);
+  const metal = toon(0x2b2d3a), suela = new THREE.MeshBasicMaterial({ color: 0x7ff0ff });
+  for (const sx of [-1, 1]) {
+    const b = outline(new THREE.Mesh(new RoundedBoxGeometry(0.2, 0.17, 0.3, 3, 0.06), metal), 0.08);
+    b.position.set(sx * 0.15, -0.53, 0.07); pl.botas.add(b);
+    const s = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.03, 0.28), suela);
+    s.position.set(sx * 0.15, -0.62, 0.07); pl.botas.add(s);
+  }
+  // LINTERNA del casco: una luz que viaja contigo. Solo se prende donde el nivel lo pide
+  // (ambiente.luzJugador), por ejemplo en la cueva oscura de Ícaro.
+  pl.luz = new THREE.PointLight(0xffe6c2, 0, 22, 1.3);
+  scene.add(pl.luz);              // va en la escena y no en el grupo: el grupo parpadea cuando te pegan
   pl.fist = outline(new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), toon(0xffd36b, { emissive: 0x553300 })), 0.1);
   pl.fist.visible = false; pl.body.add(pl.fist);
   pl.shadow = new THREE.Mesh(new THREE.CircleGeometry(0.62, 24),
@@ -137,6 +150,9 @@ export function applyLook() {
   for (const k in pl.acc) pl.acc[k].visible = ACCS[ajustes.accesorio % ACCS.length] === k;
 }
 applyLook();
+
+/** Pone (o saca) las botas de salto. */
+export function mostrarBotas(v) { pl.botas.visible = v; }
 
 /** Muestra (o esconde) la lunita dentro del casco. */
 export function mostrarLunita(v) { pl.moon.visible = v; }
@@ -389,6 +405,8 @@ function rayHit(origin, dir) {   // raycast de la sombra hacia el centro del pla
 export function updatePlayerVisuals(dt, elapsed) {
   const p = player;
   pl.group.position.copy(p.pos); orient(pl.group, p.up, p.facing);
+  pl.luz.intensity = ambienteActual.luzJugador;
+  pl.luz.position.copy(p.pos).addScaledVector(p.up, 1.6);
   p.land += (0 - p.land) * damp(12, dt);
   let sx = 1 + p.land * 0.6, sy = 1 - p.land, sz = 1 + p.land * 0.6;
   pl.body.rotation.set(0, 0, 0);

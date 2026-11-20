@@ -79,6 +79,18 @@ const SONIDOS = {
   cargaTarjeta: { archivo: 'carga-tarjeta.wav', vol: 0.35, tono: 0.03 },
   cargaLista:   { archivo: 'carga-lista.wav',   vol: 0.55 },
   nivelCompleto:{ archivo: 'nivel-completo.wav', vol: 0.7 },
+  // ÍCARO: llegada (cineIcaro.js) y cueva. Todos generados con herramientas/generar-sonidos.py
+  llegadaIcaro: { archivo: 'llegada-icaro.wav', vol: 0.9, musica: true },
+  choque:       { archivo: 'choque.wav',        vol: 1.0 },
+  caidaGrieta:  { archivo: 'caida-grieta.wav',  vol: 0.8 },
+  golpeCueva:   { archivo: 'golpe-cueva.wav',   vol: 0.9 },
+  cueva:        { archivo: 'cueva-loop.wav',    vol: 0.8, musica: true, loop: true },
+  misteriosa:   { archivo: 'misteriosa-loop.wav', vol: 0.75, musica: true, loop: true },
+  ojosRojos:    { archivo: 'ojos-rojos.wav',    vol: 0.8 },
+  vozM1:        { archivo: 'voz-misteriosa1.wav', vol: 0.35, tono: 0.06 },
+  vozM2:        { archivo: 'voz-misteriosa2.wav', vol: 0.35, tono: 0.06 },
+  vozM3:        { archivo: 'voz-misteriosa3.wav', vol: 0.35, tono: 0.06 },
+  botas:        { archivo: 'botas.wav',         vol: 0.8 },
   // FALTA (si llega, se agrega aquí y ya suena): musicaMenu
 };
 const PASOS = ['paso1', 'paso2', 'paso3'];
@@ -230,6 +242,12 @@ escuchar('nivel', def => {
   if (fondo.nombre !== (def.musica || null)) { apagar(fondo.h, 0.3); fondo.h = null; }
   fondo.nombre = def.musica || null;
 });
+// una cinemática puede cambiar la música de fondo: emitir('musica', 'misteriosa') o null (silencio)
+escuchar('musica', nombre => {
+  if (fondo.nombre === nombre) return;
+  apagar(fondo.h, 1.5); fondo.h = null;
+  fondo.nombre = nombre;
+});
 escuchar('arena', () => {                              // jefe.js: pisaste la arena
   fondo.zona = 'combate';
   sonar('tensionGolpe');
@@ -286,6 +304,21 @@ escuchar('cargaTarjeta', () => sonar('cargaTarjeta'));
 escuchar('cargaLista', () => sonar('cargaLista'));
 escuchar('cargaFin', () => salirDelEspacio(2.5));
 escuchar('completo', () => sonar('nivelCompleto'));
+
+/* =========================================================
+   ÍCARO: llegada (cineIcaro.js) y cueva
+   ========================================================= */
+let llegada = null;
+escuchar('icaroLlegada', () => { apagar(llegada); llegada = sonar('llegadaIcaro'); });
+escuchar('choqueCinturon', () => sonar('choque'));
+escuchar('caidaGrieta', () => sonar('caidaGrieta'));
+escuchar('caeCueva', () => { apagar(llegada, 0.5); llegada = null; sonar('golpeCueva'); });
+escuchar('ojosRojos', () => sonar('ojosRojos'));
+escuchar('botas', () => sonar('botas'));
+// la voz de la personaje: una sílaba al azar cada 3 letras (dialogo.js)
+const VOZ_M = ['vozM1', 'vozM2', 'vozM3'];
+escuchar('vozLetra', () => sonar(VOZ_M[Math.floor(Math.random() * VOZ_M.length)]));
+escuchar('nivel', () => { apagar(llegada, 0.3); llegada = null; });
 
 // jugador: salto, puño, caer al suelo y al agua (los pasos van en actualizarAudio)
 escuchar('salto', () => sonar('salto'));

@@ -37,6 +37,7 @@ import { pintarIconos } from './iconos.js';
 import './dialogo.js';
 import { actualizarAudio, _audio } from './audio.js';
 import { actualizarCineOvni } from './cineOvni.js';
+import { iniciarLlegada, actualizarCineIcaro, saltarCineIcaro, _icaro } from './cineIcaro.js';
 import { NIVELES, LABORATORIO } from './niveles/index.js';
 import { abrirEditor, frameEditor, conectarEditor, volverAlEditor, ed } from './editor/editor.js';
 
@@ -56,7 +57,14 @@ function empezarNivel(i, conCine = false) {
   mostrarMenu(false);
   jugadorALaPlaya(false);
   cargarNivel(NIVELES[i]);
-  if (conCine) {
+  if (NIVELES[i].intro === 'icaro') {
+    // llegada a Ícaro: choque con el cinturón, caída a la grieta y despertar en la cueva (cineIcaro.js)
+    $('saltarCine').classList.remove('oculto');
+    iniciarLlegada(() => {
+      $('saltarCine').classList.add('oculto');
+      juego.modo = 'juego'; mostrarHUD(true); tituloNivel();
+    });
+  } else if (conCine) {
     juego.modo = 'cine';
     mostrarHUD(false);
     $('saltarCine').classList.remove('oculto');
@@ -100,8 +108,8 @@ $('tMenu').onclick = () => ed.probando ? volverAlEditor() : irAlMenu();   // pro
 function editor() { mostrarMenu(false); jugadorALaPlaya(false); abrirEditor(); }
 $('mEditor').onclick = editor;
 conectarEditor(irAlMenu);
-$('saltarCine').onclick = () => saltarDespertar();
-addEventListener('keydown', e => { if (juego.modo === 'cine' && (e.code === 'Escape' || e.code === 'Enter')) saltarDespertar(); });
+$('saltarCine').onclick = () => saltarCineIcaro() || saltarDespertar();
+addEventListener('keydown', e => { if (juego.modo === 'cine' && (e.code === 'Escape' || e.code === 'Enter') && !(e.code === 'Enter' && _icaro.C.activo)) saltarCineIcaro() || saltarDespertar(); });
 
 /* ---------- HORIZONTAL OBLIGATORIO EN CELULAR ----------
    El navegador no deja girar la pantalla solo. Lo que sí podemos:
@@ -164,7 +172,7 @@ function frame(now) {
   actualizarEscape(dt);
 
   const dtCine = vertical.matches ? 0 : dt;           // en vertical, la cinemática también espera
-  if (!actualizarDespertar(dtCine) && !actualizarCineOvni(dtCine) && !actualizarCineDespegue(dtCine)) updateCamera(dt);
+  if (!actualizarDespertar(dtCine) && !actualizarCineOvni(dtCine) && !actualizarCineDespegue(dtCine) && !actualizarCineIcaro(dtCine)) updateCamera(dt);
   renderer.render(scene, camera);
   if (jugando) actualizarHUD(dt);
 }
@@ -184,4 +192,5 @@ window.__game = {
   menu: irAlMenu,
   columba: _depurar,
   editor: ed, abrirEditor: editor,
+  icaro: _icaro,
 };

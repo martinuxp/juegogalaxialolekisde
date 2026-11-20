@@ -163,7 +163,7 @@ body.pc #touch { cursor: pointer }   /* un clic atrapa el mouse (entrada.js) */
 #hQuien { font: 600 12px ui-monospace, Menlo, monospace; letter-spacing: .3em; opacity: .45; margin-bottom: 14px }
 #negro { position: fixed; inset: 0; z-index: 7; background: #000; opacity: 0; pointer-events: none; transition: opacity 1.8s ease-out }
 #negro.ver { opacity: 1; transition: none }
-#saltarCine { position: fixed; z-index: 9; top: calc(12px + var(--st)); right: calc(12px + var(--sr)); font-family: ui-rounded, system-ui, sans-serif }
+#saltarCine { position: fixed; z-index: 12; top: calc(12px + var(--st)); right: calc(12px + var(--sr)); font-family: ui-rounded, system-ui, sans-serif }
 #hTexto { font: italic 400 clamp(18px, 4.6vw, 25px)/1.45 var(--serif); text-shadow: 0 2px 16px #000;
   opacity: 0; transition: opacity .6s; min-height: 5em }
 #hTexto.ver { opacity: 1 }
@@ -253,3 +253,28 @@ body.pc #joyHint { display: none }   /* en PC no hay joystick: te mueves con WAS
 #cgSeguir .ico { width: 26px; height: 26px }
 @keyframes cgLate { 50% { transform: scale(1.08); box-shadow: 0 0 18px rgba(125,255,168,.5) } }
 @media (max-height: 420px) { #cgTarjeta { min-height: 120px; padding: 10px 14px 12px } #cgTexto { font-size: 13px } #cgCaja { gap: 7px } }
+
+/* ---- charla de una cinemática (js/dialogo.js → decir): la caja va abajo, oscura, con borde rojo,
+        y aparecen las franjas negras de cine arriba y abajo ---- */
+#cartelDlg.charla #cartelVelo { background: none }
+#cartelDlg.charla #cartelVelo::before, #cartelDlg.charla #cartelVelo::after { content: ''; position: absolute; left: 0; right: 0; height: 9vh; background: #000; animation: franja .6s ease-out both }
+#cartelDlg.charla #cartelVelo::before { top: 0 }
+#cartelDlg.charla #cartelVelo::after { bottom: 0 }
+@keyframes franja { from { transform: scaleY(0) } }
+#cartelDlg.charla #cdCaja { top: auto; bottom: calc(9vh + 10px + var(--sb, 0px)); transform: translate(-50%, 14px);
+  background: radial-gradient(120% 140% at 0% 0%, rgba(255,60,60,.16), transparent 55%), linear-gradient(160deg, #1a1418, #0b090c 70%);
+  border-color: rgba(255,120,110,.55); box-shadow: 0 0 0 5px rgba(10,8,10,.6), 0 0 26px rgba(255,60,60,.18) }
+#cartelDlg.charla.ver #cdCaja, #cartelDlg.charla #cdCaja.ver { transform: translate(-50%, 0) }
+#cartelDlg.charla #cdIcono { color: #ff4a42; background: radial-gradient(circle at 35% 30%, #4a4550, #1d1b22); border-color: rgba(255,120,110,.6) }
+#cartelDlg.charla #cdPagina { letter-spacing: 3px; color: #ffb3ad }
+/* celular en horizontal (poca altura): caja más baja y angosta, franjas más finas */
+@media (max-height: 500px) {
+  #cartelDlg.charla #cartelVelo::before, #cartelDlg.charla #cartelVelo::after { height: 6vh }
+  #cartelDlg.charla #cdCaja { bottom: calc(6vh + 6px); width: min(64vw, 620px); min-height: 0; padding: 10px 16px 8px 10px;
+    grid-template-columns: 44px 1fr; gap: 2px 12px }
+  #cartelDlg.charla #cdIcono { width: 44px; height: 44px }
+  #cartelDlg.charla #cdIcono .ico { width: 26px; height: 26px }
+  #cartelDlg.charla #cdTexto { font-size: 14px; min-height: 2.6em }
+}
+#blanco { position: fixed; inset: 0; z-index: 8; background: #fff; opacity: 0; pointer-events: none; transition: opacity .7s ease-out }
+#blanco.ver { opacity: 1; transition: none }

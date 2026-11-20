@@ -10,6 +10,7 @@
      · fecha: el día del cambio (hora de Chile)
    ========================================================= */
 export const HISTORIAL = [
+  { v: '0.16', fecha: '20 nov', cambios: 'Ícaro: cinemática de llegada (choque con el cinturón y caída a la grieta), cueva oscura de dunas con linterna, personaje misteriosa con su charla, botas de salto, música y sonidos nuevos' },
   { v: '0.15', fecha: '20 nov', cambios: 'Sonidos: música ambiente del espacio en el despegue y la carga, rugido del cohete, salto, pasos, puño, caídas, chapuzón y fanfarria al completar' },
   { v: '0.14', fecha: '20 nov', cambios: 'Ícaro lejano: escapar con v_esc, cinemática del despegue y pantalla de carga con fórmulas y datos curiosos' },
   { v: '0.13', fecha: '20 nov', cambios: 'Música de Columba, tensión al entrar a la arena y cinemática cartoon del ovni con sonidos de nave' },

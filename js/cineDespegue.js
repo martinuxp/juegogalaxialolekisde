@@ -44,8 +44,8 @@ escuchar('despegue', ({ v }) => { vDespegue = v; });
 escuchar('escapo', () => iniciarDespegue());
 
 /* ---- estela: una línea con los últimos puntos por donde pasaste ---- */
-const NEST = 70;
-function crearEstela() {
+export const NEST = 70;
+export function crearEstela() {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NEST * 3), 3));
   const col = new Float32Array(NEST * 3);
@@ -56,7 +56,7 @@ function crearEstela() {
   return l;
 }
 /* ---- brillo: un sprite que sigue al jugador, así se ve como una estrellita cuando ya está lejos ---- */
-function crearBrillo() {
+export function crearBrillo() {
   const cv = document.createElement('canvas'); cv.width = cv.height = 64;
   const g = cv.getContext('2d'), grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
   grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.3, 'rgba(185,195,255,.7)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
