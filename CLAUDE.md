@@ -40,6 +40,7 @@ Módulos ES sin bundler. Three.js 0.170.0 copiado en `js/vendor/three/` (importm
 - **Historia:** diálogo en negro (texto del grupo, `%NAME%`) + cinemática del despertar en la cama de flores (`js/despertar.js`).
 - **Personalización:** traje (5), accesorio (3), nombre, dificultad 7/5/3 corazones, g×. Se guarda en `localStorage` (`almaLunarAjustes`).
 - **Editor de planetas** (`js/editor/`, menú o `?editor`, desktop first): paleta de bloques, inspector con la física del planeta, terreno = islas-esfera, bases tierra/agua/roca/arena/hielo/lava (la lava quita un corazón), Probar con la física real, exporta `nivel.json` (`js/niveles/formato.js`, prueba `pruebas/formato.test.mjs`). El bloque **Nota** es un placeholder: cuando Martín mande un JSON con notas, hay que convertir cada una en un bloque real.
+- **Audio (`js/audio.js`, archivos en `sonidos/`):** tabla `SONIDOS` evento → archivo; escucha los `emitir()` (dash, pisoton, vida, reaparecer, despegue, aterrizaje, leer, paginaCartel, golpeEnemigo). Se desbloquea al primer toque (móvil). Botón parlante en HUD y menú, tecla M, deslizadores Música/Efectos en Personaje (`ajustes.volMusica`, `volEfectos`, `silencio`). Faltan: salto, puño y música.
 - **Gancho de pruebas:** `window.__game` expone juego, player, step, ajustes, enemies(), jugarNivel(i), laboratorio(), menu(), columba, editor, abrirEditor().
 - **Pendiente:**
   - La lunita del casco aparece al tomar un fragmento (los fragmentos parten en Ícaro).

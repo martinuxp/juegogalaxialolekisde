@@ -10,6 +10,7 @@
      · fecha: el día del cambio (hora de Chile)
    ========================================================= */
 export const HISTORIAL = [
+  { v: '0.11', fecha: '20 nov', cambios: 'Sonidos: dash, pisotón, daño, cañón, voces de los aliens, carteles y botones; silencio (M) y volúmenes' },
   { v: '0.10', fecha: '19 nov', cambios: 'Campo de fuerza del cañón: los muros laterales ya no se ven torcidos' },
   { v: '0.9', fecha: '19 nov', cambios: 'Mouse atrapado para la cámara (Esc lo suelta), Ctrl = pisotón y versión en el inicio' },
   { v: '0.8', fecha: '19 nov', cambios: 'Controles de PC: clic o F = puño, doble Espacio = pisotón, E = leer, Tab = centrar' },

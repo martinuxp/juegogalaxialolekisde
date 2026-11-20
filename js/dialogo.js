@@ -52,6 +52,7 @@ function avanzar() {
   if (juego.modo !== 'cartel' || performance.now() < d.cerrandoT) return;
   if (d.escribiendo) { terminarPagina(); return; }
   d.i++;
+  emitir('paginaCartel');
   if (d.i < d.paginas.length) mostrarPagina();
   else cerrar();
 }

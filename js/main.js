@@ -33,6 +33,7 @@ import { iniciarDialogo, iniciarDespertar, actualizarDespertar, saltarDespertar 
 import { limpiarEntrada, input } from './entrada.js';
 import { pintarIconos } from './iconos.js';
 import './dialogo.js';
+import { actualizarAudio, _audio } from './audio.js';
 import { NIVELES, LABORATORIO } from './niveles/index.js';
 import { abrirEditor, frameEditor, conectarEditor, volverAlEditor, ed } from './editor/editor.js';
 
@@ -131,6 +132,7 @@ function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min((now - last) / 1000, 0.1); last = now;
   tiempo += dt;
+  actualizarAudio(dt);
 
   if (juego.modo === 'menu') {
     actualizarColumba(dt);
@@ -171,7 +173,7 @@ requestAnimationFrame(frame);
 
 // gancho para pruebas automáticas (Playwright): permite avanzar la física a mano
 window.__game = {
-  juego, player, step, ajustes, input, cam, piezas, ovni, pelea,
+  juego, player, step, ajustes, input, cam, piezas, ovni, pelea, audio: _audio,
   enemies: () => juego.enemigos,
   jugarNivel: i => { limpiarEntrada(); empezarNivel(i); },
   laboratorio: () => { mostrarMenu(false); jugadorALaPlaya(false); cargarNivel(LABORATORIO); juego.modo = 'juego'; mostrarHUD(true); },

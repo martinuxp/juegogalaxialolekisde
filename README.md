@@ -74,6 +74,7 @@ El juego sabe si juegas con teclado y mouse o con el dedo (lo último que usaste
 | Dash | DASH | Shift / K |
 | Cargar cañón / supersalto | botón del cañón (mantener y soltar) | L |
 | Panel de física | DEBUG | G |
+| Silenciar | botón del parlante (arriba) | M |
 
 ## Archivos
 
@@ -93,6 +94,7 @@ El juego sabe si juegas con teclado y mouse o con el dedo (lo último que usaste
 | `js/despertar.js` | Diálogo inicial y cinemática del despertar |
 | `js/camara.js`, `js/entrada.js`, `js/ui.js` | Cámara, controles y HUD |
 | `js/dialogo.js` | Caja de diálogo de los carteles (pausa el juego) |
+| `js/audio.js` + `sonidos/` | Sonidos (Web Audio): escucha los `emitir(...)` del juego, desbloqueo al primer toque, silencio y volúmenes |
 | `js/editor/editor.js`, `js/editor/editor.css` | Editor de planetas (modo debug) |
 | `js/niveles/formato.js` | Formato `nivel.json` del editor y bases de planeta (tierra, agua, roca, arena, hielo, lava) |
 | `js/iconos.js` | Íconos SVG (Iconoir, MIT, y algunos propios); el juego no usa emojis |

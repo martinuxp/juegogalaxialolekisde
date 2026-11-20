@@ -244,6 +244,7 @@ export function stepPlayer(dt) {
     if (!p.grounded) p.airDash = false;
     p.dashDir.copy(mvLen > 0.2 ? mv : p.facing); tangent(p.dashDir, p.dashDir, p.up).normalize();
     p.facing.copy(p.dashDir); p.dashHit.clear(); p.dashGround = p.grounded;
+    emitir('dash');
   }
   // SALTO (con "coyote time": puedes saltar un ratito después de salir de un borde)
   if (input.jumpQ > 0 && (p.grounded || p.coyote > 0) && (p.state === 'normal' || p.state === 'dash' || p.state === 'punch')) {
