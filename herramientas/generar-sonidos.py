@@ -475,6 +475,32 @@ def botas():
     return sube + x
 
 
+
+# ---------------------------------------------------------------- botas de salto
+def super_carga():
+    """Agacharse con las botas (0,45 s): un zumbido que SUBE de tono, como algo que se carga."""
+    t = tiempo(0.45)
+    k = t / t[-1]
+    f = 180 * (520 / 180) ** k
+    return (oscilar(f, 'triangulo') + 0.3 * oscilar(f * 2)) * np.minimum(1, t / 0.03) * (0.3 + 0.7 * k) * 0.6
+
+
+def super_listo():
+    """¡Listo! Un 'ting' brillante: dos campanitas agudas casi juntas (Mi y Si)."""
+    t = tiempo(0.9)
+    return campana(t, 0, 1318.5, 0.35) + 0.8 * campana(t, 0.035, 1975.5, 0.3)
+
+
+def super_salto():
+    """El súper salto: un 'fuiiip' más grande que el salto normal + soplido que sube."""
+    t = tiempo(0.5)
+    k = t / t[-1]
+    f = 200 * (1100 / 200) ** (k ** 0.5)
+    tono = (oscilar(f, 'triangulo') + 0.35 * oscilar(f * 1.5)) * (1 - k) ** 1.5
+    soplo = ruido_filtrado(len(t), 800, 5000, 171) * np.sin(np.pi * k) * 0.8
+    return (tono + soplo) * np.minimum(1, t / 0.005)
+
+
 def guardar_estereo(nombre, x, pico=0.8):
     x = x / (np.max(np.abs(x)) + 1e-9) * pico
     datos = (x.T * 32767).astype('<i2')               # muestras intercaladas: I D I D ...
@@ -495,6 +521,9 @@ def generar_icaro():
     for i, (f0, sem) in enumerate(((190, 161), (172, 162), (214, 163)), 1):
         guardar(f'voz-misteriosa{i}.wav', voz_misteriosa(f0, sem), 0.6)
     guardar('botas.wav', botas(), 0.75)
+    guardar('super-carga.wav', super_carga(), 0.5)
+    guardar('super-listo.wav', super_listo(), 0.7)
+    guardar('super-salto.wav', super_salto(), 0.75)
 
 
 if __name__ == '__main__':

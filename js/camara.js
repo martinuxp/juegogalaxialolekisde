@@ -11,6 +11,7 @@ import { V3, clamp, damp, tangent, anyPerp } from './util.js';
 import { camera } from './escena.js';
 import { input } from './entrada.js';
 import { juego } from './estado.js';
+import { mundo } from './fisica.js';
 
 export const cam = {
   fwd: new V3(0, 0, -1), up: new V3(0, 1, 0),
@@ -46,6 +47,7 @@ export function updateCamera(dt) {
   cam.pos.lerp(want, damp(volando ? 4 : 10, dt));
   cam.look.lerp(target, damp(16, dt));
   camera.position.copy(cam.pos);
+  noAtravesar(target, dt);
   if (cam.shake > 0) {
     cam.shake -= dt; const s = cam.shake * 0.9;
     camera.position.x += (Math.random() - 0.5) * s;
@@ -54,6 +56,43 @@ export function updateCamera(dt) {
   }
   camera.up.copy(cam.up);
   camera.lookAt(cam.look);
+}
+
+/* ---------------------------------------------------------
+   QUE LA CÁMARA NO QUEDE DENTRO DE UNA ROCA
+   Tiramos un "rayo" desde el jugador hasta la cámara. Si el rayo
+   choca con una esfera (planeta, isla, roca o duna), la cámara se
+   pone justo ANTES del choque, entre la roca y el jugador.
+   Choque rayo–esfera: un punto del rayo es  x = o + t·d  (o = origen,
+   d = dirección, t = distancia). Está en la esfera si |x − c|² = R².
+   Eso da una ecuación de segundo grado en t:
+       t² + 2·b·t + c' = 0,  con  b = (o − c)·d  y  c' = |o − c|² − R²
+       t = −b − √(b² − c')   (el primer punto donde entra)
+   Si b² − c' < 0, el rayo no toca la esfera.
+   Al acercarse lo hace de golpe (para no ver el interior), y al
+   alejarse vuelve suave.
+   --------------------------------------------------------- */
+const _rd = new V3(), _ro = new V3();
+let distLibre = Infinity;
+function noAtravesar(target, dt) {
+  _rd.copy(camera.position).sub(target);
+  const L = _rd.length();
+  if (L < 1e-3) return;
+  _rd.divideScalar(L);
+  let tMin = L;
+  for (const s of mundo.solidos) {
+    _ro.copy(target).sub(s.c);
+    const b = _ro.dot(_rd), c = _ro.lengthSq() - s.R * s.R;
+    if (c < 0) continue;                      // el jugador está "dentro" (no pasa): no la contamos
+    const disc = b * b - c;
+    if (disc < 0) continue;
+    const t = -b - Math.sqrt(disc);
+    if (t > 0 && t < tMin) tMin = t;
+  }
+  const libre = tMin < L ? Math.max(0.6, tMin - 0.4) : L;
+  if (!isFinite(distLibre)) distLibre = libre;
+  distLibre = libre < distLibre ? libre : distLibre + (libre - distLibre) * damp(3, dt);
+  if (distLibre < L - 1e-3) camera.position.copy(target).addScaledVector(_rd, distLibre);
 }
 
 /** Pone la cámara detrás del jugador de golpe (al empezar un nivel). */

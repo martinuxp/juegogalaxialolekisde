@@ -84,7 +84,7 @@ function actualizarBotonSuper() {
   const enCanon = !!juego.enCanon;
   $('bSuper').classList.toggle('oculto', !(p.tieneSuper || enCanon));
   $('bSuper').classList.toggle('llamar', enCanon && p.state !== 'carga');   // late para que lo veas
-  const ic = enCanon ? 'canon' : 'super';
+  const ic = enCanon ? 'canon' : p.botas ? 'botas' : 'super';
   if (ic !== iconoSuper) { $('bSuper').innerHTML = icono(ic, 2); iconoSuper = ic; }
 }
 

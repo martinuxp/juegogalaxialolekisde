@@ -91,6 +91,9 @@ const SONIDOS = {
   vozM2:        { archivo: 'voz-misteriosa2.wav', vol: 0.35, tono: 0.06 },
   vozM3:        { archivo: 'voz-misteriosa3.wav', vol: 0.35, tono: 0.06 },
   botas:        { archivo: 'botas.wav',         vol: 0.8 },
+  superCarga:   { archivo: 'super-carga.wav',   vol: 0.5 },
+  superListo:   { archivo: 'super-listo.wav',   vol: 0.8 },
+  superSalto:   { archivo: 'super-salto.wav',   vol: 0.75, tono: 0.04 },
   // FALTA (si llega, se agrega aquí y ya suena): musicaMenu
 };
 const PASOS = ['paso1', 'paso2', 'paso3'];
@@ -315,6 +318,11 @@ escuchar('caidaGrieta', () => sonar('caidaGrieta'));
 escuchar('caeCueva', () => { apagar(llegada, 0.5); llegada = null; sonar('golpeCueva'); });
 escuchar('ojosRojos', () => sonar('ojosRojos'));
 escuchar('botas', () => sonar('botas'));
+// súper salto con las botas: carga (al agacharte), "ting" cuando está listo y el salto
+let carga = null;
+escuchar('agacha', () => { apagar(carga, 0.05); carga = sonar('superCarga'); });
+escuchar('superListo', () => sonar('superListo'));
+escuchar('superSalto', () => { apagar(carga, 0.05); carga = null; sonar('superSalto'); });
 // la voz de la personaje: una sílaba al azar cada 3 letras (dialogo.js)
 const VOZ_M = ['vozM1', 'vozM2', 'vozM3'];
 escuchar('vozLetra', () => sonar(VOZ_M[Math.floor(Math.random() * VOZ_M.length)]));
