@@ -66,10 +66,10 @@ El juego sabe si juegas con teclado y mouse o con el dedo (lo último que usaste
 | Acción | Celular | PC |
 |---|---|---|
 | Mover | joystick (mitad izquierda) | WASD / flechas |
-| Cámara | arrastrar a la derecha | mantener clic izquierdo y mover el mouse; Tab centra |
+| Cámara | arrastrar a la derecha | mover el mouse (el primer clic lo atrapa y esconde; Esc lo suelta); Tab centra |
 | Saltar | SALTO | Espacio |
-| Pisotón | botón del guante en el aire | Espacio otra vez en el aire (si vas cayendo a menos de 1 m del suelo, cuenta como salto guardado) |
-| Puño | botón del guante en el suelo | clic sin arrastrar o F |
+| Pisotón | botón del guante en el aire | Ctrl en el aire, o Espacio otra vez en el aire (si vas cayendo a menos de 1 m del suelo, cuenta como salto guardado) |
+| Puño | botón del guante en el suelo | clic (con el mouse atrapado) o F |
 | Leer cartel | botón del guante junto al cartel | E (aparece una teclita E en el botón) |
 | Dash | DASH | Shift / K |
 | Cargar cañón / supersalto | botón del cañón (mantener y soltar) | L |

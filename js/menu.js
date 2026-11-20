@@ -17,6 +17,7 @@ import { mallaJugador, applyLook, SUITS, SUIT_NOMBRES, ACCS, ACC_NOMBRES } from 
 import { escenaColumba, PLAYA, estadoSegunProgreso } from './columba3d.js';
 import { NIVELES } from './niveles/index.js';
 import { icono } from './iconos.js';
+import { HISTORIAL, VERSION } from './version.js';
 
 const $ = id => document.getElementById(id);
 const acciones = { jugar: null, historia: null, laboratorio: null, nivel: null };
@@ -59,7 +60,13 @@ export function mostrarMenu(si) {
     : ajustes.nivelesCompletos === 0 ? 'Sin su luna, el mar de Columba se quedó quieto.'
     : `El mar vuelve a moverse · ${ajustes.nivelesCompletos} de 5`;
   $('mHistoria').classList.toggle('oculto', !ajustes.historiaVista);
-  $('menuPie').textContent = 'Física 2° medio · Unidad IV: El Universo';
+  $('menuPie').textContent = 'Física 2° medio · Unidad IV: El Universo · ';
+  // versión (tocarla muestra el historial de cambios, ver version.js)
+  const bv = document.createElement('button');
+  bv.id = 'menuVersion'; bv.textContent = `v${VERSION} · ${HISTORIAL[0].fecha}`;
+  bv.onclick = () => $('menuHistorial').classList.toggle('oculto');
+  $('menuPie').append(bv);
+  $('menuHistorial').innerHTML = HISTORIAL.map(h => `<li><b>v${h.v}</b> <span>${h.fecha}</span> ${h.cambios}</li>`).join('');
 }
 $('mJugar').onclick = () => acciones.jugar();
 $('mHistoria').onclick = () => acciones.historia();

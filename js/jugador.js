@@ -188,7 +188,7 @@ export function stepPlayer(dt) {
   const p = player;
   p.dashCD -= dt; p.invul -= dt; p.launchCD -= dt; p.hurtT -= dt;
   input.jumpQ -= dt; input.atkQ -= dt; input.dashQ -= dt;
-  input.punoQ -= dt; input.poundQ -= dt; input.leerQ -= dt;
+  input.punoQ -= dt; input.poundQ -= dt; input.leerQ -= dt; input.pisoQ -= dt;
   computeGravity(p);
   if (p.state === 'dormido') return;                 // cinemática del despertar
   if (p.state === 'launch') { stepLaunch(dt); return; }
@@ -226,6 +226,11 @@ export function stepPlayer(dt) {
     }
     // si vas cayendo y estás a menos de poundAltMin del suelo, no pisoteas:
     // ese Espacio queda guardado como salto (buffer) para cuando aterrices
+  }
+  // PISOTÓN con Ctrl: tecla solo para eso, así que no hay que adivinar; en el aire siempre pisotea
+  if (input.pisoQ > 0) {
+    if (p.grounded) input.pisoQ = 0;
+    else if (p.state === 'normal' || p.state === 'dash') { input.pisoQ = 0; input.poundQ = 0; p.state = 'poundWind'; p.t = 0; }
   }
   // ATAQUE: en el suelo = puño; en el aire = pisotón
   if (input.atkQ > 0 && (p.state === 'normal' || p.state === 'dash')) {

@@ -108,8 +108,7 @@ body:not(.lab) .tb.lab { display: none }
 body.pc #bAtk .tecla { display: grid; place-items: center; position: absolute; top: -10px; left: -10px; width: 30px; height: 30px;
   border-radius: 9px; background: #ffe08a; color: #3a2a00 }
 body.pc #bAtk .tecla .ico { width: 24px; height: 24px }
-body.pc #touch { cursor: grab }
-body.pc #touch.girando { cursor: grabbing }
+body.pc #touch { cursor: pointer }   /* un clic atrapa el mouse (entrada.js) */
 #bSuper.llamar { animation: llamar 1s ease-in-out infinite }
 @keyframes llamar { 50% { transform: scale(1.12); box-shadow: 0 0 30px rgba(125,255,168,.8) } }
 #bSuper { width: 70px; height: 70px; right: calc(124px + var(--sr)); bottom: calc(112px + var(--sb)); border-color: var(--verde);
@@ -130,6 +129,12 @@ body.pc #touch.girando { cursor: grabbing }
 .mb.principal { font-size: 27px; opacity: 1 }
 .mb.chico { font-size: 17px; padding: 4px 0 }
 #menu .pie { font: 11px ui-monospace, Menlo, monospace; opacity: .5; margin-top: 18px }
+#menuVersion { background: none; border: 0; padding: 0; color: inherit; font: inherit; text-decoration: underline dotted; cursor: pointer }
+#menuHistorial { position: absolute; left: calc(28px + var(--sl)); right: calc(28px + var(--sr)); bottom: calc(48px + var(--sb)); z-index: 1;
+  list-style: none; margin: 0; padding: 12px 14px; max-width: 520px; max-height: calc(100% - 120px); overflow: auto;
+  background: rgba(10,12,22,.85); border-radius: 12px; font: 12px/1.45 ui-monospace, Menlo, monospace; backdrop-filter: blur(6px) }
+#menuHistorial li + li { margin-top: 6px }
+#menuHistorial span { opacity: .6 }
 
 /* panel de personaje y nivel completo */
 #personaje, #completo { position: fixed; inset: 0; z-index: 11; display: grid; place-items: center; padding: 20px;

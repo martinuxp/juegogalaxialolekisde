@@ -9,7 +9,7 @@
        a la siguiente página; después de la última se cierra
    ========================================================= */
 import { juego, escuchar, emitir } from './estado.js';
-import { limpiarEntrada, conControles } from './entrada.js';
+import { limpiarEntrada, conControles, atajos } from './entrada.js';
 import { icono } from './iconos.js';
 
 const $ = id => document.getElementById(id);
@@ -64,6 +64,7 @@ function cerrar() {
   emitir('cartelLeido');
 }
 
+atajos.avanzarCartel = avanzar;                  // clic con el mouse atrapado (entrada.js)
 escuchar('leer', cartel => { abrir(cartel); d.cerrandoT = performance.now() + 180; });
 $('cartelVelo').addEventListener('pointerdown', e => { e.preventDefault(); avanzar(); });
 addEventListener('keydown', e => {
