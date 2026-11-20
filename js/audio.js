@@ -85,6 +85,10 @@ const SONIDOS = {
   caidaGrieta:  { archivo: 'caida-grieta.wav',  vol: 0.8 },
   golpeCueva:   { archivo: 'golpe-cueva.wav',   vol: 0.9 },
   cueva:        { archivo: 'cueva-loop.wav',    vol: 0.8, musica: true, loop: true },
+  // MÚSICA de la cueva (la mandó muxp). combate = la canción que entra con crossfade al pelear.
+  // tarde: true = se carga solo cuando el nivel la pide (son largas y ocupan memoria en el celular)
+  dunas:        { archivo: 'dunas.mp3',         vol: 0.8, musica: true, loop: true, tarde: true, combate: 'dunasCombate' },
+  dunasCombate: { archivo: 'dunas-combate.mp3', vol: 0.8, musica: true, loop: true, tarde: true },
   misteriosa:   { archivo: 'misteriosa-loop.wav', vol: 0.75, musica: true, loop: true },
   ojosRojos:    { archivo: 'ojos-rojos.wav',    vol: 0.8 },
   vozM1:        { archivo: 'voz-misteriosa1.wav', vol: 0.35, tono: 0.06 },
@@ -151,7 +155,15 @@ async function cargar(nombre, def) {
     if (def.loop) bordes[nombre] = def.loopDe || bordesDelLoop(buffers[nombre]);
   } catch (e) { console.warn('[audio] no pude cargar', def.archivo, e); }
 }
-if (ctx) for (const [n, d] of Object.entries(SONIDOS)) cargar(n, d);
+if (ctx) for (const [n, d] of Object.entries(SONIDOS)) if (!d.tarde) cargar(n, d);
+/** Las canciones con  tarde: true  se cargan recién cuando alguien las pide (y su pareja de combate). */
+const pedidos = {};
+function asegurar(nombre) {
+  const def = SONIDOS[nombre];
+  if (!ctx || !def || pedidos[nombre]) return;
+  pedidos[nombre] = true; cargar(nombre, def);
+  if (def.combate) asegurar(def.combate);
+}
 
 // para las pruebas automáticas (window.__game.audio): qué cargó y qué sonó último
 export const _audio = { buffers, ctx, ultimos: [] };
@@ -187,9 +199,10 @@ export function sonar(nombre, op = {}) {
   if (op.subir) { const v = g.gain.value; g.gain.value = 0; g.gain.setTargetAtTime(v, ctx.currentTime, op.subir / 3); }
   if (def.loop) { s.loop = true; [s.loopStart, s.loopEnd] = bordes[nombre]; }
   s.connect(g).connect(def.musica ? musica : efectos);
-  s.start(Math.max(op.cuando || 0, ctx.currentTime), def.loop ? s.loopStart : 0);
+  const t0 = Math.max(op.cuando || 0, ctx.currentTime), desde = op.desde ?? (def.loop ? s.loopStart : 0);
+  s.start(t0, desde);
   _audio.ultimos.push(nombre); if (_audio.ultimos.length > 20) _audio.ultimos.shift();
-  return { s, g };
+  return { s, g, t0, desde, nombre };
 }
 
 /** Apaga de a poco un sonido que está sonando (lo que devolvió sonar). */
@@ -242,14 +255,16 @@ function calma(desde = 0) { fondo.zona = 'calma'; fondo.calmaDesde = desde; call
 
 escuchar('nivel', def => {
   callarTema(0.3); calma(); salirDelEspacio(0.5);
-  if (fondo.nombre !== (def.musica || null)) { apagar(fondo.h, 0.3); fondo.h = null; }
+  if (fondo.nombre !== (def.musica || null)) { apagar(fondo.h, 0.3); fondo.h = null; olvidarPelea(0.3); }
   fondo.nombre = def.musica || null;
+  asegurar(fondo.nombre);
 });
 // una cinemática puede cambiar la música de fondo: emitir('musica', 'misteriosa') o null (silencio)
 escuchar('musica', nombre => {
   if (fondo.nombre === nombre) return;
-  apagar(fondo.h, 1.5); fondo.h = null;
+  apagar(fondo.h, 1.5); fondo.h = null; olvidarPelea(1.5);
   fondo.nombre = nombre;
+  asegurar(nombre);
 });
 escuchar('arena', () => {                              // jefe.js: pisaste la arena
   fondo.zona = 'combate';
@@ -266,12 +281,71 @@ escuchar('ovniBoing', () => sonar('ovniBoing'));
 escuchar('rayo', () => sonar('ovniRayo'));
 escuchar('ovniHuye', () => sonar('ovniHuye'));
 
+/* =========================================================
+   CROSSFADE A LA MÚSICA DE PELEA (dunas → dunas-combate)
+   ---------------------------------------------------------
+   Si la canción del nivel tiene pareja de combate (combate: '...')
+   y un enemigo te está persiguiendo, una canción baja mientras la
+   otra sube, al mismo tiempo, en CRUCE seg.
+   Crossfade de "igual potencia": los volúmenes siguen
+       sale = cos(x·π/2)     entra = sin(x·π/2)     (x de 0 a 1)
+   y como cos² + sin² = 1, la potencia total (lo que oímos como
+   "fuerte") se mantiene constante: no hay un bache al medio.
+   Las canciones duran distinto (2:42 y 1:52), así que no se
+   pueden tocar "sincronizadas": la de pelea parte desde el inicio
+   y, al terminar la pelea, la de calma SIGUE DONDE IBA.
+   ========================================================= */
+const CRUCE = 1.6;             // segundos del crossfade
+const CALMA_TRAS = 4;          // segundos sin enemigos encima antes de volver a la calma
+const pelea = { h: null, activa: false, sinEnemigos: 99, retomar: null };
+const curva = (n, entra) => Float32Array.from({ length: n }, (_, i) => { const x = i / (n - 1); return entra ? Math.sin(x * Math.PI / 2) : Math.cos(x * Math.PI / 2); });
+/** Cambia el volumen de h siguiendo la curva (multiplicada por su volumen normal). */
+function rampa(h, entra, seg) {
+  const v = SONIDOS[h.nombre].vol, t = ctx.currentTime, c = curva(32, entra).map(k => k * v);
+  h.g.gain.cancelScheduledValues(t);
+  h.g.gain.setValueCurveAtTime(c, t, seg);
+}
+/** ¿En qué segundo de la canción va? (para retomarla donde iba) */
+function posicion(h) {
+  const [a, b] = [h.s.loopStart, h.s.loopEnd], largo = b - a, ya = Math.max(0, ctx.currentTime - h.t0);
+  return a + ((h.desde - a + ya) % largo + largo) % largo;
+}
+function olvidarPelea(seg) { apagar(pelea.h, seg); pelea.h = null; pelea.activa = false; pelea.retomar = null; pelea.sinEnemigos = 99; }
+/** ¿Algún enemigo te está persiguiendo? (la misma regla que usa enemigos.js: mismo planeta y más cerca que su aggro) */
+function hayPelea() {
+  const p = juego.jugador;
+  if (!p || juego.modo !== 'juego') return false;
+  return juego.enemigos.some(e => !e.dead && !e.T.jefe && e.planet === p.planet && e.pos.distanceTo(p.pos) < e.T.aggro);
+}
+function dirigirPelea(dt) {
+  const def = SONIDOS[fondo.nombre];
+  if (!def || !def.combate) return;
+  if (juego.modo === 'juego') { if (hayPelea()) pelea.sinEnemigos = 0; else pelea.sinEnemigos += dt; }   // leyendo un cartel, el reloj se congela
+  const quiere = pelea.sinEnemigos < CALMA_TRAS && fondo.h && ctx.currentTime >= fondo.calmaDesde;
+  if (quiere && !pelea.activa && buffers[def.combate]) {          // ENTRA la pelea
+    pelea.activa = true;
+    pelea.retomar = posicion(fondo.h);
+    pelea.h = sonar(def.combate, { vol: 0 });
+    if (pelea.h) rampa(pelea.h, true, CRUCE);
+    rampa(fondo.h, false, CRUCE);
+    const viejo = fondo.h; viejo.s.stop(ctx.currentTime + CRUCE + 0.05);
+    fondo.h = { ...viejo, enPausa: true };                       // marcador: la calma "está", pero callada
+  } else if (!quiere && pelea.activa && pelea.sinEnemigos >= CALMA_TRAS) {   // SALE la pelea
+    pelea.activa = false;
+    if (pelea.h) { rampa(pelea.h, false, CRUCE); pelea.h.s.stop(ctx.currentTime + CRUCE + 0.05); pelea.h = null; }
+    fondo.h = sonar(fondo.nombre, { vol: 0, desde: pelea.retomar ?? undefined });
+    if (fondo.h) rampa(fondo.h, true, CRUCE);
+    pelea.retomar = null;
+  }
+}
+
 /** Cada cuadro: ¿debería sonar la música del planeta? Si sí y no suena, entra suave; si no, sale suave. */
-function dirigirFondo() {
+function dirigirFondo(dt) {
   const jugando = ['juego', 'cartel', 'cine'].includes(juego.modo);
   const quiere = jugando && !fondo.espacio && fondo.nombre && fondo.zona === 'calma' && ctx.currentTime >= fondo.calmaDesde;
   if (quiere && !fondo.h) fondo.h = sonar(fondo.nombre, { subir: 2.5 });
-  if (!quiere && fondo.h) { apagar(fondo.h, 1.5); fondo.h = null; }
+  if (!quiere && fondo.h) { if (!fondo.h.enPausa) apagar(fondo.h, 1.5); fondo.h = null; olvidarPelea(1.5); }
+  if (quiere) dirigirPelea(dt);
   if (!jugando && fondo.tension) callarTension(0.5);
 }
 
@@ -367,7 +441,7 @@ export function actualizarAudio(dt) {
   if (!ctx) return;
   musica.gain.setTargetAtTime(ajustes.volMusica * (juego.modo === 'cartel' ? 0.4 : 1), ctx.currentTime, 0.2);
   if ((tema.loop || tema.entrada) && !['juego', 'cartel', 'cine'].includes(juego.modo)) callarTema(0.5);   // volviste al menú
-  dirigirFondo();
+  dirigirFondo(dt);
   if (fondo.espacio && !['cine', 'carga'].includes(juego.modo)) salirDelEspacio(1);     // por si saliste a medias
   if (juego.modo !== 'juego' || !juego.jugador) return;
   pasos(dt);

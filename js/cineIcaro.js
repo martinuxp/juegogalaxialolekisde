@@ -284,7 +284,7 @@ function entrarALaCueva() {
   respawnPlayer();
   player.state = 'dormido'; player.acostado = 1; player.ojos = 0.06; player.invul = 0;
   emitir('caeCueva');
-  emitir('musica', 'cueva');
+  emitir('musica', 'dunas');
   setTimeout(() => $('fundido').classList.remove('ver'), 350);
 }
 
@@ -526,7 +526,7 @@ function terminarCharla() {
   C.saliendo = 1;                       // ella sigue caminando a la oscuridad y se apagan sus ojos
   C.m.meta.ojos = 0; C.m.meta.apunta = 0; C.m.meta.hombros = 0;
   if (C.saltado) C.m.facing.copy(pos.s).negate();
-  emitir('musica', 'cueva');
+  emitir('musica', 'dunas');
   // la cámara del juego parte desde donde quedó, detrás del protagonista
   cam.fwd.copy(p.facing); cam.up.copy(p.up);
   cam.pos.copy(camera.position); cam.look.copy(p.pos).addScaledVector(p.up, 1);
