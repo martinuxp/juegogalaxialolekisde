@@ -19,8 +19,10 @@ export const cam = {
   pos: new V3(0, 30, 20), look: new V3(), shake: 0,
   // lugares con techo bajo (el laberinto de Ícaro): { dist, pitch } máximos. null = sin límite.
   limite: null, pitchLim: 1.25,
+  // algo que conviene ver (Meowl en su rama): la mirada se inclina un poco hacia ahí. null = nada.
+  foco: null,
 };
-const _c1 = new V3(), _c2 = new V3();
+const _c1 = new V3(), _c2 = new V3(), _c3 = new V3(), _c4 = new V3();
 
 export function updateCamera(dt) {
   const p = juego.jugador;
@@ -49,9 +51,15 @@ export function updateCamera(dt) {
 
   const target = _c1.copy(p.pos).addScaledVector(cam.up, 1.0);
   const d = cam.distActual;
+  // FOCO: si está adelante de la cámara, miramos un punto entre el jugador y el foco (y nos alejamos un poco)
+  let mirar = target;
+  if (cam.foco) {
+    _c3.copy(cam.foco).sub(target);
+    if (_c3.dot(cam.fwd) > 0) { mirar = _c4.copy(target).addScaledVector(_c3, 0.35); cam.distActual += (11 - cam.distActual) * damp(1.5, dt); }
+  }
   const want = _c2.copy(target).addScaledVector(cam.fwd, -Math.cos(pitch) * d).addScaledVector(cam.up, Math.sin(pitch) * d);
   cam.pos.lerp(want, damp(volando ? 4 : 10, dt));
-  cam.look.lerp(target, damp(16, dt));
+  cam.look.lerp(mirar, damp(cam.foco ? 6 : 16, dt));
   camera.position.copy(cam.pos);
   noAtravesar(target, dt);
   if (cam.shake > 0) {

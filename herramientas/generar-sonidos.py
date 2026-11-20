@@ -501,6 +501,283 @@ def super_salto():
     return (tono + soplo) * np.minimum(1, t / 0.005)
 
 
+# ---------------------------------------------------------------- cueva: peligros del laberinto
+def estalactita_cruje():
+    """La piedra se suelta: crujidos (clics de ruido al azar) cada vez más seguidos."""
+    t = tiempo(0.45)
+    x = np.zeros_like(t)
+    r = np.random.default_rng(301)
+    for i in range(18):
+        t0 = 0.4 * (i / 18) ** 0.7 + r.random() * 0.02
+        m = t >= t0
+        tt = t[m] - t0
+        x[m] += ruido_filtrado(m.sum(), 1500, 7000, 302 + i) * np.exp(-tt / 0.006) * (0.5 + 0.5 * i / 18)
+    return x + 0.25 * oscilar(np.full_like(t, 70)) * (t / t[-1])
+
+
+def estalactita_cae():
+    """Silbido que baja (la piedra cortando el aire)."""
+    t = tiempo(0.5)
+    k = t / t[-1]
+    return ruido_filtrado(len(t), 900, 3000, 311) * (0.3 + k) * np.minimum(1, (t[-1] - t) / 0.05) * 2
+
+
+def estalactita_rompe():
+    """Golpe de piedra que se hace pedazos: 'pum' grave + piedritas que rebotan."""
+    t = tiempo(0.9)
+    pum = oscilar(45 + 120 * np.exp(-t / 0.02)) * np.exp(-t / 0.12)
+    trozos = np.zeros_like(t)
+    r = np.random.default_rng(321)
+    for i in range(16):
+        t0 = 0.02 + r.random() * 0.6
+        m = t >= t0
+        tt = t[m] - t0
+        trozos[m] += np.sin(2 * np.pi * (900 + r.random() * 2500) * tt) * np.exp(-tt / 0.012) * (0.2 + r.random() * 0.4)
+    return pum * 1.2 + ruido_filtrado(len(t), 200, 4000, 322) * np.exp(-t / 0.08) * 3 + trozos
+
+
+def fragil_cruje():
+    """El suelo cruje antes de caer: un 'crrrr' grave de roca que se raja."""
+    t = tiempo(0.9)
+    k = t / t[-1]
+    raspa = ruido_filtrado(len(t), 120, 900, 331) * (0.5 + 0.5 * np.sin(2 * np.pi * 26 * t) ** 2) * 4
+    return raspa * np.minimum(1, t / 0.05) * (0.4 + 0.6 * k)
+
+
+def fragil_cae():
+    """Las baldosas se van: derrumbe (ruido grave que se apaga) + golpe."""
+    t = tiempo(1.2)
+    derrumbe = ruido_filtrado(len(t), 60, 1200, 341) * np.exp(-t / 0.35) * 5
+    golpe = oscilar(40 + 80 * np.exp(-t / 0.03)) * np.exp(-t / 0.2)
+    return derrumbe + golpe
+
+
+def corazon():
+    """Tomar un corazón: arpegio corto hacia arriba (do-mi-sol-do)."""
+    t = tiempo(0.7)
+    return sum(campana(t, i * 0.07, f, 0.35) for i, f in enumerate((523, 659, 784, 1046)))
+
+
+def rescate():
+    """Te sacan del fondo: 'fuuup' que sube con brillo."""
+    t = tiempo(0.6)
+    k = t / t[-1]
+    f = 300 * (1200 / 300) ** k
+    return (oscilar(f, 'triangulo') + 0.4 * oscilar(f * 1.5)) * np.sin(np.pi * k)
+
+
+# ---------------------------------------------------------------- superficie de Ícaro
+def desierto_loop():
+    """Viento del desierto (12 s, loop sin costura): ruido grave cuyo volumen
+    sube y baja lento (ráfagas) + un silbido agudo que va y viene.
+    Las ráfagas usan senos con un número ENTERO de vueltas en 12 s, así empalma."""
+    seg = 12.0
+    t = tiempo(seg)
+    n = len(t)
+    def rafagas(semilla):
+        r = np.random.default_rng(semilla)
+        return sum(np.sin(2 * np.pi * k / seg * t + r.random() * 6) / k for k in (1, 2, 3, 5))
+    canales = []
+    for lado in (0, 1):
+        base = ruido_filtrado(n, 60, 500, 401 + lado) * 6
+        silbido = ruido_filtrado(n, 900, 1600, 403 + lado) * 2.5
+        g1 = 0.55 + 0.35 * rafagas(410 + lado)
+        g2 = np.clip(rafagas(420 + lado), 0, None)
+        canales.append(base * g1 + silbido * g2 * 0.5)
+    return np.array(canales)
+
+
+def quemadura():
+    """¡La arena quema! chisporroteo (ruido agudo a saltos) + un 'fsss' de vapor."""
+    t = tiempo(0.8)
+    r = np.random.default_rng(431)
+    chispas = ruido_filtrado(len(t), 3000, 9000, 432) * (r.random(len(t)) < 0.08) * 6
+    vapor = ruido_filtrado(len(t), 1500, 6000, 433) * np.exp(-t / 0.3) * 3
+    return (chispas * np.exp(-t / 0.25) + vapor) * np.minimum(1, t / 0.005)
+
+
+def salir_grieta():
+    """Sales disparad@ de la grieta: rugido de tierra + 'fuuush' que sube."""
+    t = tiempo(1.4)
+    k = t / t[-1]
+    tierra = ruido_filtrado(len(t), 40, 400, 441) * np.exp(-t / 0.5) * 6
+    sube = ruido_filtrado(len(t), 700, 3000, 442) * np.sin(np.pi * np.minimum(1, k * 1.6)) * 2
+    return tierra + sube
+
+
+def meowl_chilla():
+    """El grito de Meowl: mitad maullido, mitad ulular. Un 'miau' (tono que sube y baja,
+    con la 'boca' que se abre: filtro) seguido de dos 'uuh' de búho."""
+    t = tiempo(1.5)
+    x = np.zeros_like(t)
+    m = t < 0.65
+    tt = t[m]
+    k = tt / 0.65
+    f = 520 + 380 * np.sin(np.pi * k ** 0.8)
+    miau = oscilar(f) + 0.5 * oscilar(f * 2) + 0.3 * oscilar(f * 3)
+    x[m] += miau * np.sin(np.pi * k) ** 0.7
+    for t0 in (0.8, 1.15):
+        m = (t >= t0) & (t < t0 + 0.3)
+        tt = t[m] - t0
+        f = 330 - 60 * tt / 0.3
+        x[m] += (oscilar(f) + 0.2 * oscilar(f * 2)) * np.sin(np.pi * tt / 0.3) * 0.9
+    return x
+
+
+def meowl_carga():
+    """El destello antes de lanzarse: un brillo agudo que sube rápido (medio segundo)."""
+    t = tiempo(0.5)
+    k = t / t[-1]
+    f = 900 * (2600 / 900) ** k
+    return (oscilar(f) + 0.4 * oscilar(f * 1.5)) * (0.2 + 0.8 * k) * (1 + 0.5 * np.sin(2 * np.pi * 28 * t))
+
+
+def meowl_picada():
+    """La picada: silbido que se pone más agudo y fuerte (acelera exponencialmente)."""
+    t = tiempo(0.9)
+    k = t / t[-1]
+    capa = ruido_filtrado(len(t), 600, 4000, 451) * np.exp(3 * k) / np.exp(3) * 3
+    tono = oscilar(400 * np.exp(1.6 * k)) * k ** 2
+    return (capa + 0.5 * tono) * np.minimum(1, (t[-1] - t) / 0.03)
+
+
+def meowl_clava():
+    """Se clava en la arena: golpe grave + arena que salta."""
+    t = tiempo(0.8)
+    golpe = oscilar(38 + 140 * np.exp(-t / 0.025)) * np.exp(-t / 0.18) * 1.4
+    arena = ruido_filtrado(len(t), 300, 3500, 461) * np.exp(-t / 0.15) * 4
+    return golpe + arena
+
+
+def meowl_arrastre():
+    """Se arrastra por la arena hacia ti: raspado que acelera."""
+    t = tiempo(0.9)
+    k = t / t[-1]
+    raspa = ruido_filtrado(len(t), 250, 2500, 471) * (0.6 + 0.4 * np.sin(2 * np.pi * (12 + 30 * k) * t)) * 4
+    return raspa * np.minimum(1, t / 0.03) * np.minimum(1, (t[-1] - t) / 0.08)
+
+
+def meowl_mareado():
+    """Pajaritos del mareo: 'pío-pío' agudos que suben y bajan."""
+    t = tiempo(1.2)
+    x = np.zeros_like(t)
+    for i, t0 in enumerate((0.0, 0.25, 0.5, 0.75)):
+        m = (t >= t0) & (t < t0 + 0.16)
+        tt = t[m] - t0
+        f = 2200 + 500 * np.sin(2 * np.pi * tt / 0.16) * (1 if i % 2 else -1)
+        x[m] += oscilar(f) * np.sin(np.pi * tt / 0.16)
+    return x
+
+
+def meowl_golpe():
+    """¡Le pegaste!: 'bonk' + un graznido corto."""
+    t = tiempo(0.6)
+    bonk = oscilar(180 + 400 * np.exp(-t / 0.02)) * np.exp(-t / 0.08)
+    m = t > 0.08
+    tt = t[m] - 0.08
+    graz = np.zeros_like(t)
+    f = 700 - 300 * tt / 0.5
+    graz[m] = (oscilar(f, 'triangulo') + 0.6 * ruido_filtrado(m.sum(), 800, 3000, 481)) * np.exp(-tt / 0.15)
+    return bonk * 1.2 + graz
+
+
+def meowl_vuela():
+    """Aleteo: soplidos de ruido que se repiten rápido."""
+    t = tiempo(1.3)
+    alas = (np.sin(2 * np.pi * 7 * t) ** 8)
+    return ruido_filtrado(len(t), 200, 1800, 491) * alas * np.sin(np.pi * t / t[-1]) * 4
+
+
+def meowlito_sale():
+    """Sale de la arena: 'plop' + arenita."""
+    t = tiempo(0.4)
+    plop = oscilar(200 + 500 * (t / t[-1])) * np.exp(-t / 0.06)
+    return plop + ruido_filtrado(len(t), 1000, 5000, 501) * np.exp(-t / 0.08) * 2
+
+
+def meowlito_carga():
+    """El destello del meowlito: dos 'pip' agudos, como una alarma chiquita."""
+    t = tiempo(0.5)
+    x = np.zeros_like(t)
+    for t0 in (0.0, 0.25):
+        m = (t >= t0) & (t < t0 + 0.1)
+        tt = t[m] - t0
+        x[m] += oscilar(np.full(m.sum(), 1760.0)) * np.sin(np.pi * tt / 0.1)
+    return x
+
+
+def meowlito_lanza():
+    """Se lanza: chillido corto que sube ('¡iiip!') + soplido."""
+    t = tiempo(0.35)
+    k = t / t[-1]
+    f = 900 * (2000 / 900) ** k
+    return (oscilar(f, 'triangulo') * (1 - k) + ruido_filtrado(len(t), 1200, 4000, 511) * (1 - k) * 1.5) * np.minimum(1, t / 0.005)
+
+
+def meowlito_muere():
+    """Meowlito aplastado: 'pfuí' que baja + poof de arena."""
+    t = tiempo(0.4)
+    k = t / t[-1]
+    f = 1500 * (300 / 1500) ** k
+    return oscilar(f, 'triangulo') * (1 - k) + ruido_filtrado(len(t), 500, 4000, 521) * np.exp(-t / 0.1) * 2
+
+
+def confeti():
+    """¡Meowl se hace confeti!: estallido de fiesta (pop) + lluvia de brillitos."""
+    t = tiempo(2.0)
+    pop = ruido_filtrado(len(t), 100, 6000, 531) * np.exp(-t / 0.04) * 6 + oscilar(60 + 200 * np.exp(-t / 0.02)) * np.exp(-t / 0.1)
+    brillos = np.zeros_like(t)
+    r = np.random.default_rng(532)
+    for _ in range(40):
+        brillos += campana(t, 0.05 + r.random() * 1.4, 1500 + r.random() * 3000, 0.12) * (0.2 + r.random() * 0.3)
+    return pop + brillos
+
+
+def canon_sube():
+    """El cañón sale de la arena: rumor grave que sube + piedras."""
+    t = tiempo(2.6)
+    k = t / t[-1]
+    rumor = ruido_filtrado(len(t), 30, 300, 541) * (0.4 + 0.6 * np.sin(np.pi * k)) * 6
+    motor = oscilar(50 + 40 * k) * 0.6 * np.sin(np.pi * k)
+    return rumor + motor
+
+
+def canon_listo():
+    """El cañón quedó arriba: dos campanadas."""
+    t = tiempo(1.2)
+    return campana(t, 0, 660, 0.5) + campana(t, 0.18, 990, 0.6)
+
+
+def generar_superficie():
+    # cueva (peligros del laberinto)
+    guardar('estalactita-cruje.wav', estalactita_cruje(), 0.6)
+    guardar('estalactita-cae.wav', estalactita_cae(), 0.6)
+    guardar('estalactita-rompe.wav', estalactita_rompe(), 0.85)
+    guardar('fragil-cruje.wav', fragil_cruje(), 0.6)
+    guardar('fragil-cae.wav', fragil_cae(), 0.8)
+    guardar('corazon.wav', corazon(), 0.7)
+    guardar('rescate.wav', rescate(), 0.6)
+    # superficie y Meowl
+    guardar_estereo('desierto-loop.wav', desierto_loop(), 0.6)
+    guardar('quemadura.wav', quemadura(), 0.75)
+    guardar('salir-grieta.wav', salir_grieta(), 0.8)
+    guardar('meowl-chilla.wav', meowl_chilla(), 0.8)
+    guardar('meowl-carga.wav', meowl_carga(), 0.55)
+    guardar('meowl-picada.wav', meowl_picada(), 0.8)
+    guardar('meowl-clava.wav', meowl_clava(), 0.9)
+    guardar('meowl-arrastre.wav', meowl_arrastre(), 0.7)
+    guardar('meowl-mareado.wav', meowl_mareado(), 0.5)
+    guardar('meowl-golpe.wav', meowl_golpe(), 0.85)
+    guardar('meowl-vuela.wav', meowl_vuela(), 0.6)
+    guardar('meowlito-sale.wav', meowlito_sale(), 0.6)
+    guardar('meowlito-carga.wav', meowlito_carga(), 0.45)
+    guardar('meowlito-lanza.wav', meowlito_lanza(), 0.6)
+    guardar('meowlito-muere.wav', meowlito_muere(), 0.6)
+    guardar('confeti.wav', confeti(), 0.85)
+    guardar('canon-sube.wav', canon_sube(), 0.8)
+    guardar('canon-listo.wav', canon_listo(), 0.7)
+
+
 def guardar_estereo(nombre, x, pico=0.8):
     x = x / (np.max(np.abs(x)) + 1e-9) * pico
     datos = (x.T * 32767).astype('<i2')               # muestras intercaladas: I D I D ...
@@ -528,6 +805,9 @@ def generar_icaro():
 
 if __name__ == '__main__':
     import sys
+    if 'superficie' in sys.argv:       # python3 herramientas/generar-sonidos.py superficie → peligros de la cueva, superficie y Meowl
+        generar_superficie()
+        sys.exit()
     if 'icaro' in sys.argv:            # python3 herramientas/generar-sonidos.py icaro → solo los de Ícaro
         generar_icaro()
         sys.exit()
@@ -552,3 +832,4 @@ if __name__ == '__main__':
     guardar('nivel-completo.wav', nivel_completo(), 0.8)
     # Ícaro (llegada y cueva)
     generar_icaro()
+    generar_superficie()

@@ -326,7 +326,7 @@ function suelo(d, out) { const P = mundo.planetas[0]; return out.copy(P.c).addSc
 escuchar('nivel', def => {
   limpiarLlegada();
   limpiarCharla();
-  if (def.id !== 'icaro') return;
+  if (def.id !== 'icaro' || !def.charla) return;            // solo la cueva (la superficie es otra parte)
   // las botas ya están en la sala desde el principio: su brillo se ve a lo lejos en la oscuridad
   C.botas = crearBotasSuelo();
   suelo(def.charla.botas, pos.botas);
@@ -347,7 +347,7 @@ function limpiarCharla() {
 /** Revisa en cada cuadro si entraste a la sala (y si tomaste las botas). */
 function revisarCueva() {
   const def = juego.nivel;
-  if (!def || def.id !== 'icaro' || juego.modo !== 'juego') return;
+  if (!def || def.id !== 'icaro' || !def.charla || juego.modo !== 'juego') return;
   const p = player;
   if (!C.hecha && !C.activo) {
     const P = mundo.planetas[0];

@@ -19,6 +19,7 @@
    personaje tiene su centro en z = −24.
    ========================================================= */
 import { V3 } from '../util.js';
+import { emitir } from '../estado.js';
 import { decorarCueva } from '../cueva.js';
 import { POZO, generarPozo, semillaDeLaUrl, construirPozo, actualizarPozo, reiniciarPozo, checkpointDeRepisa, enemigosDelPozo } from '../pozo.js';
 
@@ -84,6 +85,7 @@ const nivel = {
   pozo,
   checkpointRepisa: k => checkpointDeRepisa(pozo, k),
   alPaso: dt => actualizarPozo(dt, pozo, nivel),
+  alSalir: () => emitir('irSuperficie'),        // al salir por la grieta de arriba: la superficie (main.js)
 
   // la escena de la personaje (js/cineIcaro.js)
   sala: SALA,

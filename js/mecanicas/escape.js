@@ -69,7 +69,8 @@ export function pasoCarga(p, dt) {
   }
 
   // la velocidad sube a ritmo constante hasta el tope de la barra
-  p.carga = Math.min(CFG.superMax, p.carga + CFG.superRitmo * dt);
+  // (cada nivel puede tener un cañón más potente: juego.superMax / superRitmo, ver nivel.js)
+  p.carga = Math.min(juego.superMax || CFG.superMax, p.carga + (juego.superRitmo || CFG.superRitmo) * dt);
 
   if (!input.superHeld) {
     if (p.carga < CFG.superMin) { p.state = 'normal'; p.carga = 0; p.fijo = null; return; }

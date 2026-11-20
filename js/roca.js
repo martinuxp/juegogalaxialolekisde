@@ -82,7 +82,7 @@ export function crearRoca(cajas, op = {}) {
       _n.fromBufferAttribute(N, i).applyMatrix3(_nm).normalize();
       const n = ruido2(_p.x, _p.y, _p.z);
       // arriba (donde se pisa) casi plano; a los lados, la roca se come hacia adentro
-      const tope = Math.max(0, _n.dot(arriba));
+      const tope = Math.max(0, _n.dot(k.arriba || arriba));   // cada caja puede tener su propio "arriba" (planeta curvo)
       const prof = (tope > 0.7 ? plano : hundir) * (0.25 + 0.75 * n);
       _p.addScaledVector(_n, -prof);
       pos.push(_p.x, _p.y, _p.z);

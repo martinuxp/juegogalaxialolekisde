@@ -315,7 +315,9 @@ export function construirMundo(def) {
     const pos = (mundo.planetas[0] ? mundo.planetas[0].c.clone() : new V3()).addScaledVector(L.dir, L.dist);
     const m = new THREE.Mesh(planetGeo(L.R, L.color, L.seed || 77), toon(0xffffff, { map: null, vertexColors: true }));
     outline(m, 0.01); m.position.copy(pos);
-    const brillo = halo('rgba(255,170,90,.35)', L.R * 3.2); brillo.position.copy(pos);
+    m.traverse(o => { if (o.material) o.material.fog = false; });      // se ve aunque el nivel tenga niebla (el cielo de Ícaro)
+    if (L.emisivo) m.material.emissive = new THREE.Color(L.color).multiplyScalar(L.emisivo);   // se ve aunque lo ilumine de atrás
+    const brillo = halo(L.brillo || 'rgba(255,170,90,.35)', L.R * 3.2); brillo.position.copy(pos); brillo.material.fog = false;
     grupo.add(m, brillo);
     piezas.lejano = { mesh: m, pos, R: L.R, nombre: L.nombre };
   }
