@@ -427,40 +427,106 @@ function sacarMeowlito(l) {
 }
 
 ETYPES.meowlito = { r: 0.5, hp: 1, speed: 4.2, aggro: 40, stomp: 1, punch: 1, dash: 1, mass: 1, modelo: crearMeowlito };
+
+/* EMBOSCADA: los meowlitos que pone el nivel (no los que llama Meowl) parten ESCONDIDOS.
+   - En el laberinto, bajo el suelo de su cámara: salen cuando te acercas y te persiguen
+     sin alejarse de su casa.
+   - En el desierto (planeta que quema), bajo la ARENA: a ellos no los quema, viven ahí.
+     Salen, brillan y te saltan encima desde la arena. Si fallan y caen a la arena, se
+     vuelven a hundir y esperan de nuevo. */
+const EMB = { cerca: 9, alto: 3, altoArena: 6, espera: 2.5, lejos: 12 };
+function prepararEmboscada(e) {
+  e.fase = 'oculto'; e.t = 0; e.cdEmb = 0;
+  const P = e.planet;
+  if (P && P.quema && e.pos.distanceTo(P.c) < P.mar + 1) {   // vive bajo la arena: su "casa" es el punto de la arena donde se esconde
+    e.arenero = true;
+    e.casa = e.pos.clone().sub(P.c).normalize().multiplyScalar(P.mar + e.r).add(P.c);
+  } else if (!e.casa) e.casa = e.pos.clone();
+}
+/** Lo deja quieto en su casa, justo en la superficie de la arena (la arena no es sólida: hay que sostenerlo). */
+function enLaArena(e) { e.pos.copy(e.casa); e.vel.set(0, 0, 0); }
+function hundir(e) {
+  polvo(e.pos, 6, e.up);
+  emitir('meowlitoSale', e.pos);
+  e.fase = 'oculto'; e.t = 0; e.cdEmb = EMB.espera; e.balistico = false; e.saltoPendiente = null;
+  enLaArena(e);
+}
+const bajoLaArena = e => e.arenero && e.pos.distanceTo(e.planet.c) < e.planet.mar + e.r * 0.3;
+
 ETYPES.meowlito.ia = (e, dt, w) => {
   const p = player;
+  if (!e.fase) prepararEmboscada(e);
   e.t += dt;
   _q.copy(p.pos).sub(e.pos);
+  const dh = _q.dot(e.up);                           // cuánto más arriba estás tú
   tangent(w, _q, e.up);
   const dist = w.length();
   if (dist > 1e-4) w.divideScalar(dist);
+  const libre = p.planet === e.planet && p.state !== 'launch' && p.state !== 'vuelo' && p.state !== 'guiado';
+  e.oculto = e.fase === 'oculto';
+  e.iaPersigue = false;
   switch (e.fase) {
-    case 'sale':                                       // sale de la arena (0,7 s, no hace daño)
+    case 'oculto': {                                 // escondido: no se ve, no choca, no hace daño
       e.mareado = 1; w.set(0, 0, 0);
-      if (e.t > 0.7) { e.fase = 'acecha'; e.t = 0; e.mareado = 0; e.espera = 0.9 + Math.random() * 1.2; }
+      if (e.arenero) enLaArena(e);
+      const alto = e.arenero ? EMB.altoArena : EMB.alto;
+      if (e.t > e.cdEmb && libre && dist < EMB.cerca && dh > -2 && dh < alto) {
+        e.fase = 'sale'; e.t = 0; e.oculto = false;
+        emitir('meowlitoSale', e.pos); polvo(e.pos, 8, e.up);
+      }
       return 0;
-    case 'acecha':
+    }
+    case 'sale':                                     // sale del suelo (0,7 s, no hace daño)
+      e.mareado = 1; w.set(0, 0, 0);
+      if (e.arenero) enLaArena(e);
+      if (e.t > 0.7) {
+        e.mareado = 0; e.t = 0;
+        // el de la arena no camina: brilla y salta de una. Los demás te acechan primero.
+        if (e.arenero) { e.fase = 'destello'; e.dir = w.clone(); emitir('meowlitoCarga', e.pos); }
+        else { e.fase = 'acecha'; e.espera = 0.9 + Math.random() * 1.2; }
+      }
+      return 0;
+    case 'acecha': {
+      if (bajoLaArena(e)) { hundir(e); return 0; }   // se cayó de la roca a la arena: se hunde
+      // el de casa (laberinto, roca del desierto) solo te persigue si estás cerca y a su altura
+      if (!e.deMeowl && (!libre || dist > EMB.lejos || Math.abs(dh) > EMB.alto)) {
+        _q.copy(e.casa).sub(e.pos); tangent(w, _q, e.up);
+        const dc = w.length();
+        if (dc < 0.8) { w.set(0, 0, 0); return 0; }
+        w.divideScalar(dc);
+        return e.T.speed * 0.45;
+      }
+      e.iaPersigue = true;
       if (e.t > e.espera && e.grounded && dist < 13) { e.fase = 'destello'; e.t = 0; e.dir = w.clone(); emitir('meowlitoCarga', e.pos); }
       return e.T.speed;
-    case 'destello':                                   // brilla medio segundo, quieto, mirándote
+    }
+    case 'destello':                                 // brilla medio segundo, quieto, mirándote
+      e.iaPersigue = true;
+      if (e.arenero && e.pos.distanceTo(e.casa) < 0.3) enLaArena(e);
       e.flash = Math.floor(e.t * 16) % 2 ? 0.03 : 0;
       e.dir.copy(w.lengthSq() > 0 ? w : e.dir);
       w.set(0, 0, 0);
       if (e.t >= 0.5) {
-        // se LANZA: tiro parabólico. Sube a 6 m/s → vuela t = 2·6/g; de lado lo justo para llegar donde estás
-        const vy = 6, tVuelo = 2 * vy / e.gmag;
-        const vh = clamp(dist / tVuelo + 1.5, 6, 17);
+        // se LANZA con un tiro parabólico apuntado a donde estás (el mismo cálculo del "salto del susto"):
+        //   cima H = (lo que estás más arriba) + 1 m   →  v_y = √(2·g·H)
+        //   tiempo de vuelo t = v_y/g + √(2·(H − dh)/g)   →  de lado v_h = distancia / t
+        const g = e.gmag, H = Math.max(dh, 0) + 1;
+        const vy = Math.sqrt(2 * g * H), tVuelo = vy / g + Math.sqrt(2 * Math.max(H - dh, 0) / g);
+        const vh = clamp(dist / tVuelo + 1, 4, 17);
         e.saltoPendiente = { vy, vh: e.dir.clone().multiplyScalar(vh) };
         e.balistico = true; e.fase = 'lanza'; e.t = 0;
         emitir('meowlitoLanza', e.pos);
       }
       return 0;
     case 'lanza':
+      e.iaPersigue = true;
       w.set(0, 0, 0);
+      if (e.t > 0.15 && bajoLaArena(e)) { hundir(e); return 0; }   // falló: cayó a la arena y se hunde
       if (e.grounded && e.t > 0.15) { e.balistico = false; e.fase = 'mareo'; e.t = 0; e.mareado = 0.8; }
       return 0;
-    case 'mareo':                                      // aterrizó: un ratito inofensivo
+    case 'mareo':                                    // aterrizó: un ratito inofensivo
       w.set(0, 0, 0);
+      if (bajoLaArena(e)) { hundir(e); return 0; }
       if (e.t > 0.8) { e.fase = 'acecha'; e.t = 0; e.mareado = 0; e.espera = 1 + Math.random(); }
       return 0;
   }
@@ -468,7 +534,8 @@ ETYPES.meowlito.ia = (e, dt, w) => {
 };
 ETYPES.meowlito.visual = (e, t) => {
   const M = e.mesh;
-  if (e.fase === 'sale') {                             // va saliendo de la arena
+  if (e.fase === 'oculto') { M.g.visible = false; return; }
+  if (e.fase === 'sale') {                             // va saliendo del suelo
     const k = Math.min(1, e.t / 0.7);
     M.g.position.addScaledVector(e.up, -(1 - k) * 1.1);
     M.g.rotation.y += Math.sin(t * 30) * 0.2;
@@ -563,7 +630,7 @@ function limpiarConfeti() {
 /* ---------- polvo de arena (al clavarse, al salir un meowlito, al subir el cañón) ---------- */
 const polvos = [];
 let texPolvo = null;
-function polvo(pos, n) {
+function polvo(pos, n, up = pos.clone().normalize()) {
   if (!texPolvo) {
     const cv = document.createElement('canvas'); cv.width = cv.height = 64;
     const c = cv.getContext('2d'), grd = c.createRadialGradient(32, 32, 0, 32, 32, 32);
@@ -571,7 +638,6 @@ function polvo(pos, n) {
     c.fillStyle = grd; c.fillRect(0, 0, 64, 64);
     texPolvo = new THREE.CanvasTexture(cv);
   }
-  const up = pos.clone().normalize();
   for (let i = 0; i < n; i++) {
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: texPolvo, transparent: true, depthWrite: false }));
     s.position.copy(pos);
@@ -581,7 +647,8 @@ function polvo(pos, n) {
     polvos.push({ s, v, t: 0 });
   }
 }
-function animarPolvo(dt) {
+/** El polvo también se anima en el laberinto (nivel2-icaro.js lo llama desde alCuadro). */
+export function animarPolvo(dt) {
   for (let i = polvos.length - 1; i >= 0; i--) {
     const q = polvos[i];
     q.t += dt;

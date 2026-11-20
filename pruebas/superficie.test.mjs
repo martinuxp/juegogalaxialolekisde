@@ -11,7 +11,8 @@
      · la picada exponencial de Meowl: s(t) = v₀·τ·(e^(t/τ) − 1)
    ========================================================= */
 import { definirMundo, pasoNewton, agregarMuro, superficieEn, collide } from '../js/fisica.js';
-import { R_ARENA, PIEZAS, H_FISURA, puntoXZ, localXZ, ejesEn, dirXZ, tiroDeVuelta } from '../js/superficieDatos.js';
+import { R_ARENA, PIEZAS, H_FISURA, puntoXZ, localXZ, ejesEn, dirXZ, tiroDeVuelta, solidosRuinas } from '../js/superficieDatos.js';
+import { mundo } from '../js/fisica.js';
 import { CFG } from '../js/config.js';
 import { V3 } from '../js/util.js';
 
@@ -30,6 +31,10 @@ for (const k of PIEZAS) {
   const m = agregarMuro(puntoXZ(k.x, k.z, (k.h - 4) / 2), ex, ey, ez, new V3(k.w / 2, (k.h + 4) / 2, k.d / 2));
   m.planeta = P;
 }
+// las ruinas también chocan (las mismas cajas y esferas que pone el juego): los saltos de abajo las tienen en cuenta
+const ruinas = solidosRuinas();
+for (const k of ruinas.cajas) { const m = agregarMuro(k.c, k.ex, k.ey, k.ez, k.medio); m.planeta = P; }
+for (const e of ruinas.esferas) mundo.solidos.push({ c: e.c, R: e.R, planeta: P });
 const pieza = id => PIEZAS.find(k => k.id === id);
 const g = P.g * (P.R / R_ARENA) ** 2;
 revisar('la gravedad en la arena es ≈ 20 m/s²', Math.abs(g - 20) < 0.05, `g = ${g.toFixed(2)}`);
@@ -75,6 +80,20 @@ function borde(A, B) {
   return { x: x - dx / L * 0.5, z: z - dz / L * 0.5 };
 }
 
+// 0) las ruinas no se meten en el camino: ningún punto de arriba de una roca (hasta 3 m) queda dentro de una ruina
+{
+  const dentroCaja = (q, k) => { const d = q.clone().sub(k.c); return Math.abs(d.dot(k.ex)) < k.medio.x + CFG.r && Math.abs(d.dot(k.ey)) < k.medio.y + CFG.r && Math.abs(d.dot(k.ez)) < k.medio.z + CFG.r; };
+  let malos = 0, total = 0;
+  for (const k of PIEZAS) {
+    const { ex, ez } = ejesEn(k.x, k.z, k.giro || 0);
+    for (let a = -0.5; a <= 0.5; a += 0.1) for (let b = -0.5; b <= 0.5; b += 0.1) for (const y of [0.6, 1.5, 3]) {
+      const q = puntoXZ(k.x, k.z, k.h + y).addScaledVector(ex, a * k.w).addScaledVector(ez, b * k.d); total++;
+      if (ruinas.cajas.some(c => dentroCaja(q, c)) || ruinas.esferas.some(e => q.distanceTo(e.c) < e.R + CFG.r)) malos++;
+    }
+  }
+  revisar('las ruinas sólidas no tapan las rocas del camino', malos === 0, `${ruinas.cajas.length} cajas y ${ruinas.esferas.length} esferas · ${malos} de ${total} puntos tapados`);
+}
+
 // 1) los huecos del camino se saltan SIN botas (salto normal de 14 m/s), cayendo al centro de la siguiente roca
 const tramos = [['salida', 'isla1'], ['isla1', 'isla2'], ['isla2', 'isla3'], ['isla3', 'isla4'], ['pasillo3', 'pasillo4']];
 for (const [a, b] of tramos) {
@@ -113,6 +132,14 @@ for (const tau of [0.36, 0.3, 0.25]) {
   while (t < 0.8) { s += v0 * Math.exp((t + dt / 2) / tau) * dt; t += dt; }
   const formula = v0 * tau * (Math.exp(t / tau) - 1);
   revisar(`picada τ = ${tau}: suma paso a paso = v₀·τ·(e^(t/τ) − 1)`, Math.abs(s - formula) / formula < 0.01, `${f1(s)} m vs ${f1(formula)} m en ${f1(t)} s`);
+}
+
+// 4b) el salto de un meowlito desde la arena: el tiro apuntado (cima H = dh + 1) cae donde estás
+for (const [dh, d] of [[2.7, 4], [3.3, 7], [0, 5]]) {
+  const H = Math.max(dh, 0) + 1, vy = Math.sqrt(2 * g * H), T = vy / g + Math.sqrt(2 * (H - dh) / g), vx = d / T;
+  let x = 0, y = 0, v = vy; const dt = 1 / 1200;
+  for (let t = 0; t < T - 1e-9; t += dt) { x += vx * dt; y += (v - g * dt / 2) * dt; v -= g * dt; }
+  revisar(`meowlito desde la arena: sube ${dh} m y avanza ${d} m`, Math.abs(x - d) < 0.05 && Math.abs(y - dh) < 0.05, `v_y = ${f1(vy)} m/s, v_h = ${f1(vx)} m/s, vuela ${f1(T)} s`);
 }
 
 // 5) el cañón: la velocidad de escape desde la arena de Meowl cabe en la barra

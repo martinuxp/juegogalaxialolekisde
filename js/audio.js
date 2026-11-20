@@ -106,7 +106,7 @@ const SONIDOS = {
   fragilCae:    { archivo: 'fragil-cae.wav',    vol: 0.8, tono: 0.06 },
   corazon:      { archivo: 'corazon.wav',       vol: 0.6 },
   rescate:      { archivo: 'rescate.wav',       vol: 0.6 },
-  // SUPERFICIE de Ícaro (superficie.js y meowl.js). desierto = viento: va como "música" hasta que muxp haga la del desierto
+  // SUPERFICIE de Ícaro (superficie.js y meowl.js). desierto = viento de relleno (ya no suena: el camino usa dunasCombate)
   desierto:     { archivo: 'desierto-loop.wav', vol: 0.7, musica: true, loop: true, tarde: true },
   quemadura:    { archivo: 'quemadura.wav',     vol: 0.8, tono: 0.08 },
   salirGrieta:  { archivo: 'salir-grieta.wav',  vol: 0.85 },
@@ -125,7 +125,9 @@ const SONIDOS = {
   confeti:      { archivo: 'confeti.wav',       vol: 0.9 },
   canonSube:    { archivo: 'canon-sube.wav',    vol: 0.85 },
   canonListo:   { archivo: 'canon-listo.wav',   vol: 0.6 },
-  // FALTA (si llega, se agrega aquí y ya suena): musicaMenu, la música del desierto y la de Meowl
+  // la pelea con Meowl (la mandó muxp): entra con crossfade desde la música del camino (musicaJefe del nivel)
+  meowlPelea:   { archivo: 'meowl-pelea.mp3',   vol: 0.85, musica: true, loop: true, tarde: true },
+  // FALTA (si llega, se agrega aquí y ya suena): musicaMenu
 };
 const PASOS = ['paso1', 'paso2', 'paso3'];
 const VOCES = ['voz1', 'voz2', 'voz3', 'voz4', 'voz5', 'voz6'];
@@ -300,6 +302,7 @@ function callarTema(seg) {
 }
 // jefe.js manda emitir('jefe', {hp, max}) al aparecer y en cada golpe: solo la primera vez cuenta
 escuchar('jefe', d => {
+  if (fondo.jefe) return;                              // este nivel tiene su propia canción de jefe (crossfade, abajo)
   if (!d || tema.entrada || tema.loop || !buffers.jefeEntrada) return;
   tema.entrada = sonar('jefeEntrada');
   tema.finEntrada = ctx.currentTime + buffers.jefeEntrada.duration;
@@ -307,10 +310,10 @@ escuchar('jefe', d => {
 // toca el suelo: parte el loop. Si la entrada aún no termina, espera a que termine
 // (son centésimas: el jefe cae ~0,8 s y la entrada dura 0,86 s) para que calce con la música.
 escuchar('jefeAterriza', () => {
-  if (tema.loop) return;
+  if (tema.loop || fondo.jefe) return;
   tema.loop = sonar('jefeLoop', { cuando: tema.finEntrada });
 });
-escuchar('jefeVencido', () => { callarTema(0.15); sonar('jefeSalida'); });
+escuchar('jefeVencido', () => { if (fondo.jefe) return; callarTema(0.15); sonar('jefeSalida'); });
 
 /* =========================================================
    MÚSICA DE FONDO Y ZONA DE COMBATE
@@ -322,7 +325,7 @@ escuchar('jefeVencido', () => { callarTema(0.15); sonar('jefeSalida'); });
    Al ganar, la música del planeta vuelve cuando termina el
    fadeout del jefe. Si pierdes, vuelve de inmediato.
    ========================================================= */
-const fondo = { nombre: null, h: null, zona: 'calma', calmaDesde: 0, tension: null, espacio: null };
+const fondo = { nombre: null, h: null, zona: 'calma', calmaDesde: 0, tension: null, espacio: null, jefe: null };
 function callarTension(seg) { apagar(fondo.tension, seg); fondo.tension = null; }
 function calma(desde = 0) { fondo.zona = 'calma'; fondo.calmaDesde = desde; callarTension(0.8); }
 
@@ -332,6 +335,9 @@ escuchar('nivel', def => {
   if (fondo.nombre !== (def.musica || null)) { apagar(fondo.h, 0.3); fondo.h = null; olvidarPelea(0.3); }
   fondo.nombre = def.musica || null;
   asegurar(fondo.nombre);
+  olvidarJefe(0.3);
+  fondo.jefe = def.musicaJefe || null;               // canción propia del jefe de este nivel (Meowl)
+  asegurar(fondo.jefe);
 });
 // una cinemática puede cambiar la música de fondo: emitir('musica', 'misteriosa') o null (silencio)
 escuchar('musica', nombre => {
@@ -341,13 +347,17 @@ escuchar('musica', nombre => {
   asegurar(nombre);
 });
 escuchar('arena', () => {                              // jefe.js: pisaste la arena
+  if (fondo.jefe) { entraJefe(); return; }             // Meowl: crossfade directo a su música, sin tensión
   fondo.zona = 'combate';
   sonar('tensionGolpe');
   if (!fondo.tension) fondo.tension = sonar('tension', { subir: 1.5 });
 });
 escuchar('jefe', d => { if (d) callarTension(0.8); });                 // aparece el jefe: manda su música
-escuchar('reaparecer', () => { callarTema(0.6); if (fondo.zona === 'combate') calma(); });   // la pelea parte de nuevo
-escuchar('jefeVencido', () => calma(ctx ? ctx.currentTime + (buffers.jefeSalida ? buffers.jefeSalida.duration : 0) : 0));
+escuchar('reaparecer', () => { callarTema(0.6); if (fondo.zona === 'combate') calma(); saleJefe(); });   // la pelea parte de nuevo
+escuchar('jefeVencido', () => {
+  if (fondo.jefe) { saleJefe(); return; }
+  calma(ctx ? ctx.currentTime + (buffers.jefeSalida ? buffers.jefeSalida.duration : 0) : 0);
+});
 
 // la nave (cineOvni.js y jefe.js)
 escuchar('ovniLlega', () => sonar('ovniLlega'));
@@ -413,6 +423,43 @@ function dirigirPelea(dt) {
   }
 }
 
+/* =========================================================
+   CROSSFADE A LA MÚSICA DEL JEFE (camino → Meowl)
+   ---------------------------------------------------------
+   Igual de "igual potencia" (cos/sin) que la de arriba, pero más
+   largo (CRUCE_JEFE): mientras Meowl despierta, la música del
+   camino baja y la suya sube. Al ganar (o si pierdes y la pelea
+   vuelve a empezar), cruza de vuelta y el camino SIGUE DONDE IBA.
+   ========================================================= */
+const CRUCE_JEFE = 2.4;
+const jefeM = { h: null, retomar: null };
+function entraJefe() {
+  if (fondo.zona === 'jefe' || !ctx) return;
+  fondo.zona = 'jefe';
+  const t = ctx.currentTime;
+  if (fondo.h && !fondo.h.enPausa) {
+    jefeM.retomar = posicion(fondo.h);
+    rampa(fondo.h, false, CRUCE_JEFE); fondo.h.s.stop(t + CRUCE_JEFE + 0.05);
+  }
+  fondo.h = null;
+  apagar(pelea.h, CRUCE_JEFE); pelea.h = null; pelea.activa = false;
+  jefeM.h = sonar(fondo.jefe, { vol: 0 });
+  if (jefeM.h) rampa(jefeM.h, true, CRUCE_JEFE);
+}
+function saleJefe() {
+  if (fondo.zona !== 'jefe' || !ctx) return;
+  fondo.zona = 'calma'; fondo.calmaDesde = 0;
+  if (jefeM.h) { rampa(jefeM.h, false, CRUCE_JEFE); jefeM.h.s.stop(ctx.currentTime + CRUCE_JEFE + 0.05); jefeM.h = null; }
+  fondo.h = sonar(fondo.nombre, { vol: 0, desde: jefeM.retomar ?? undefined });
+  if (fondo.h) rampa(fondo.h, true, CRUCE_JEFE);
+  jefeM.retomar = null;
+}
+function olvidarJefe(seg) {
+  if (jefeM.h) apagar(jefeM.h, seg);
+  jefeM.h = null; jefeM.retomar = null;
+  if (fondo.zona === 'jefe') fondo.zona = 'calma';
+}
+
 /** Cada cuadro: ¿debería sonar la música del planeta? Si sí y no suena, entra suave; si no, sale suave. */
 function dirigirFondo(dt) {
   const jugando = ['juego', 'cartel', 'cine'].includes(juego.modo);
@@ -421,6 +468,7 @@ function dirigirFondo(dt) {
   if (!quiere && fondo.h) { if (!fondo.h.enPausa) apagar(fondo.h, 1.5); fondo.h = null; olvidarPelea(1.5); }
   if (quiere) dirigirPelea(dt);
   if (!jugando && fondo.tension) callarTension(0.5);
+  if (jefeM.h && ['menu', 'completo'].includes(juego.modo)) olvidarJefe(1.5);
 }
 
 /* =========================================================

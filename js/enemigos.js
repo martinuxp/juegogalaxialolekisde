@@ -143,7 +143,7 @@ export function stepEnemies(dt) {
         tangent(_w, e.wanderDir, e.up).normalize(); e.wanderDir.copy(_w); spd *= 0.45;
       }
     }
-    e.persigue = chasing;              // audio.js lo mira para la música de pelea
+    e.persigue = chasing || !!e.iaPersigue;   // audio.js lo mira para la música de pelea (iaPersigue: lo decide su propia ia)
     let vy = e.vel.dot(e.up);
     tangent(_eh, e.vel, e.up);
     _t.copy(_w).multiplyScalar(spd);
@@ -158,11 +158,11 @@ export function stepEnemies(dt) {
     collide(e);
     // no se tiran al mar: si el paso los deja en el agua, se devuelven y cambian de rumbo
     const P = e.planet;
-    if (P && P.mar && e.stun <= 0 && !e.balistico && e.pos.distanceTo(P.c) < P.mar + e.r * 0.8) {
+    if (P && P.mar && !e.arenero && e.stun <= 0 && !e.balistico && e.pos.distanceTo(P.c) < P.mar + e.r * 0.8) {
       e.pos.copy(_prev); tangent(e.vel, e.vel, e.up).multiplyScalar(-0.3);
       e.wanderDir.negate(); e.wanderT = 1.5;
     }
-    if (P && P.mar && e.pos.distanceTo(P.c) < P.mar - e.r) { e.dead = true; e.dieT = 0.3; }   // se hundió
+    if (P && P.mar && !e.arenero && e.pos.distanceTo(P.c) < P.mar - e.r) { e.dead = true; e.dieT = 0.3; }   // se hundió
     if (_w.lengthSq() > 0.01) e.facing.lerp(_w, damp(8, dt));
     tangent(e.facing, e.facing, e.up);
     if (e.facing.lengthSq() < 1e-6) anyPerp(e.facing, e.up);

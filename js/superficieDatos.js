@@ -88,3 +88,64 @@ export function tiroDeVuelta(h, d, g = G_ARENA) {
   const vy = Math.sqrt(2 * g * H), t = vy / g + Math.sqrt(2 * (H - h) / g);
   return { vy, vx: d / t, t };
 }
+
+/* =========================================================
+   RUINAS: también chocan (se pueden tocar y pisar)
+   ---------------------------------------------------------
+   El dibujo está en superficie.js; aquí van sus medidas, para
+   que el dibujo y los choques usen LOS MISMOS números (y las
+   pruebas puedan revisar que no tapan ningún salto).
+   Cada cosa es una caja (agregarMuro) o una esfera (sólido):
+     · columna  → caja de 1,6 × alto × 1,6 m (el cilindro mide 1,6 de diámetro)
+     · obelisco → caja con su base cuadrada, girada como el dibujo
+     · arco     → 2 columnas + el dintel de arriba
+     · estatua  → esfera (la cabeza)       · brazo → caja inclinada + esfera (la mano)
+   ========================================================= */
+// [x, z, alto, rota]: columnas a los lados de los pasillos y entre las islas
+export const COLUMNAS = [[-6.5, -56, 9, false], [6, -55.5, 6, true], [-5.5, -67.5, 10, false], [15, -70, 7, true], [6, -73, 8, false],
+  [15.5, -78, 9, false], [5.5, -82, 5, true], [-9, -20, 6, true], [9, -36, 7, false], [-8, -46, 5, true], [20, -100, 10, false], [-5, -112, 8, true]];
+export const ARCO = { x: 0, z: -61, sep: 3.4, alto: 10, dintel: [9.5, 1.3, 2.2], yDintel: 10.9 };
+// [x, z, alto, giro]
+export const OBELISCOS = [[-22, -30, 16, 0.4], [26, -60, 20, 1.3], [-24, -128, 22, 0.9], [22, -140, 18, 1.7]];
+export const ESTATUA = { x: -38, z: -86, h: -1.5, giro: 0.7, inclina: 0.35, R: 6.6 };
+export const BRAZO = { x: 34, z: -112, h: -1, giro: 0.4, inclina: -0.4 };
+
+/** Cuánto sube de verdad una columna dibujada (tambores de 1,6 m desde y = −1, más el capitel). */
+export function topeColumna(alto, rota) {
+  const n = Math.ceil((alto + 1) / 1.6);
+  return n * 1.6 - 1 + (rota ? -0.6 : 0.5);
+}
+
+/**
+ * Ejes de una cosa puesta en (x, z) con giro, inclinada `inclina` rad hacia el lado
+ * (igual que obj.rotateZ en el dibujo):  ex' = ex·cos + ey·sen,  ey' = −ex·sen + ey·cos.
+ */
+function ejesInclinados(x, z, giro, inclina) {
+  const { ex, ey, ez } = ejesEn(x, z, giro), c = Math.cos(inclina), s = Math.sin(inclina);
+  return { ex: ex.clone().multiplyScalar(c).addScaledVector(ey, s), ey: ex.clone().multiplyScalar(-s).addScaledVector(ey, c), ez };
+}
+/** Punto (lx, ly, lz) del dibujo de la cosa, en el mundo. */
+function enMundo(base, E, lx, ly, lz) {
+  return base.clone().addScaledVector(E.ex, lx).addScaledVector(E.ey, ly).addScaledVector(E.ez, lz);
+}
+
+/** Todas las piezas que chocan de las ruinas: { cajas: [{c, ex, ey, ez, medio}], esferas: [{c, R}] }. */
+export function solidosRuinas() {
+  const cajas = [], esferas = [];
+  const caja = (base, E, lx, ly, lz, hx, hy, hz) => cajas.push({ c: enMundo(base, E, lx, ly, lz), ex: E.ex, ey: E.ey, ez: E.ez, medio: new V3(hx, hy, hz) });
+  const columna = (base, E, alto, rota, lx = 0) => { const top = topeColumna(alto, rota); caja(base, E, lx, (top - 1) / 2, 0, 0.8, (top + 1) / 2, 0.8); };
+  for (const [x, z, alto, rota] of COLUMNAS) columna(puntoXZ(x, z, 0), ejesEn(x, z, 0), alto, rota);
+  {
+    const A = ARCO, base = puntoXZ(A.x, A.z, 0), E = ejesEn(A.x, A.z, 0);
+    for (const sx of [-1, 1]) columna(base, E, A.alto, false, sx * A.sep);
+    caja(base, E, 0, A.yDintel, 0, A.dintel[0] / 2, A.dintel[1] / 2, A.dintel[2] / 2);
+  }
+  for (const [x, z, alto, giro] of OBELISCOS) caja(puntoXZ(x, z, 0), ejesEn(x, z, giro), 0, alto / 2 - 1, 0, 0.9, alto / 2, 0.9);
+  esferas.push({ c: puntoXZ(ESTATUA.x, ESTATUA.z, ESTATUA.h), R: ESTATUA.R });
+  {
+    const B = BRAZO, base = puntoXZ(B.x, B.z, B.h), E = ejesInclinados(B.x, B.z, B.giro, B.inclina);
+    caja(base, E, 0, 4, 0, 1.7, 6, 1.7);
+    esferas.push({ c: enMundo(base, E, 0, 10.5, 0), R: 2.3 });
+  }
+  return { cajas, esferas };
+}

@@ -136,9 +136,14 @@ export function generarPozo(semilla) {
       const mezclar = a => a.map(x => [r(), x]).sort((p, q) => p[0] - q[0]).map(x => x[1]);
       const fragiles = k === 0 ? [] : mezclar(medio).slice(0, Math.min(2, medio.length));        // suelos que se desmoronan
       const estalactitas = mezclar(medio.concat(callejones)).slice(0, 3);
-      const enemigos = k === 0 ? [] : mezclar(medio.filter(c => !fragiles.includes(c))).slice(0, k);
-      pisos.push({ k, entrada, hoyo, abiertas: [...abiertas], camino, callejones, fragiles, estalactitas, enemigos,
-        corazon: callejones.length ? callejones[Math.floor(r() * callejones.length)] : null });
+      // gatos-alien: 1 en el piso 0, 2 en el 1, 3 en el 2 (en cámaras del camino sin suelo frágil)
+      const enemigos = mezclar(medio.filter(c => !fragiles.includes(c))).slice(0, k + 1);
+      const corazon = callejones.length ? callejones[Math.floor(r() * callejones.length)] : null;
+      // meowlitos en EMBOSCADA (escondidos bajo el suelo): uno cuidando cada callejón (y su corazón)
+      // y, desde el piso 1, uno en la cámara del camino que quedó sin gato. Sin r(): no cambia el laberinto de la semilla.
+      const libres = medio.filter(c => !fragiles.includes(c) && !enemigos.includes(c));
+      const meowlitos = [...callejones, ...(k > 0 ? libres.slice(0, 1) : [])];
+      pisos.push({ k, entrada, hoyo, abiertas: [...abiertas], camino, callejones, fragiles, estalactitas, enemigos, meowlitos, corazon });
       entrada = hoyo;                              // la chimenea te deja en la misma cámara del piso de arriba
     }
     if (!ok) continue;

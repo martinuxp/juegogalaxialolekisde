@@ -160,6 +160,11 @@ export function enemigosDelPozo(datos) {
     const c = centroCelda(cel.i, cel.j);
     lista.push(['alien', 0, dirDe(c.x, c.z), piso.k * P_.H, 3.5]);
   }
+  // meowlitos escondidos (meowl.js): salen del suelo cuando te acercas. Un poco corridos del centro para no salirte debajo
+  for (const piso of datos.pisos) for (const [n, cel] of (piso.meowlitos || []).entries()) {
+    const c = centroCelda(cel.i, cel.j), ang = n * 2.1 + piso.k;
+    lista.push(['meowlito', 0, dirDe(c.x + Math.cos(ang) * 2.5, c.z + Math.sin(ang) * 2.5), piso.k * P_.H, 3.5]);
+  }
   return lista;
 }
 
