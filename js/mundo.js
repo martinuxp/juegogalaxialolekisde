@@ -203,12 +203,14 @@ function crearMuros(P, d) {
   const arriba = d.dir.clone();
   const x = tangent(new V3(), new V3(1, 0, 0), arriba).normalize();
   const z = new V3().crossVectors(x, arriba).normalize();
-  // estilo 'campo': campo de fuerza de los aliens (verde, se ve a través); si no, muro de piedra
+  // estilo 'campo': campo de fuerza de los aliens (paneles verdes con marco de metal); si no, muro de piedra.
+  // El CHOQUE es el mismo en los dos estilos: 4 cajas orientadas (agregarMuro).
   const campo = d.estilo === 'campo';
-  const piedra = campo
-    ? new THREE.MeshBasicMaterial({ color: 0x8cff6b, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
-    : toon(0x8d8a9e, { flatShading: true });
+  const piedra = toon(0x8d8a9e, { flatShading: true });
   const borde = campo ? toon(0x55506e) : toon(0x6c6880);
+  // panel de energía: plano SIN grosor y con mezcla normal. Una caja aditiva gruesa, vista de lado,
+  // suma su color en todo el grosor y se ve como una raya brillante: eso era lo raro de los muros laterales.
+  const energia = new THREE.MeshBasicMaterial({ color: 0x8cff6b, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide });
   const hundido = 0.6;                                  // parte que queda bajo el suelo (por la curvatura)
   const altoTotal = d.alto + hundido;
   for (const [eje, signo] of [[x, 1], [x, -1], [z, 1], [z, -1]]) {
@@ -218,19 +220,39 @@ function crearMuros(P, d) {
     const c = centro.clone().addScaledVector(eje, signo * d.lado).addScaledVector(arriba, altoTotal / 2 - hundido);
     const medio = new V3(d.grosor / 2, altoTotal / 2, largo);
     const solido = agregarMuro(c, eje, arriba, otro, medio);
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(d.grosor, altoTotal, largo * 2), piedra);
-    const tope = new THREE.Mesh(new THREE.BoxGeometry(d.grosor + 0.2, 0.25, largo * 2 + 0.2), borde);
-    tope.position.y = altoTotal / 2;
-    mesh.add(tope);
-    if (campo) {                                         // postes de metal en las esquinas del campo
-      for (const sz of [-1, 1]) {
-        const poste = outline(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, altoTotal, 8), borde), 0.06);
-        poste.position.z = sz * largo;
-        mesh.add(poste);
-      }
-    } else outline(mesh, 0.03);
+    let mesh;
+    if (campo) {
+      // ejes locales: y = arriba, z = a lo largo del muro. Cada lado mide 2·lado, así los
+      // 4 paneles se juntan justo en las esquinas en vez de cruzarse.
+      mesh = new THREE.Group();
+      const yPie = -altoTotal / 2 + hundido;            // altura del suelo (en el centro del muro)
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(d.lado * 2, d.alto), energia);
+      panel.rotation.y = Math.PI / 2;
+      panel.position.y = yPie + d.alto / 2;
+      panel.renderOrder = 3;
+      const tope = outline(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, d.lado * 2), borde), 0.05);
+      tope.position.y = altoTotal / 2;
+      // riel de abajo: baja 0,35 m bajo el suelo. El suelo es curvo (a 3 m del centro baja
+      // 3²/(2·43,6) ≈ 0,1 m), así el riel nunca queda flotando en las puntas.
+      const riel = outline(new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.6, d.lado * 2), borde), 0.05);
+      riel.position.y = yPie - 0.05;
+      // un solo poste por muro, en su punta +z: con los 4 muros quedan las 4 esquinas, sin postes repetidos
+      const poste = outline(new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.3, altoTotal + 0.2, 8), borde), 0.06);
+      poste.position.set(0, 0, d.lado);
+      mesh.add(panel, tope, riel, poste);
+    } else {
+      mesh = new THREE.Mesh(new THREE.BoxGeometry(d.grosor, altoTotal, largo * 2), piedra);
+      const tope = new THREE.Mesh(new THREE.BoxGeometry(d.grosor + 0.2, 0.25, largo * 2 + 0.2), borde);
+      tope.position.y = altoTotal / 2;
+      mesh.add(tope);
+      outline(mesh, 0.03);
+    }
     mesh.position.copy(c);
-    const m4 = new THREE.Matrix4().makeBasis(eje, arriba, otro);
+    // OJO: la base del dibujo tiene que ser "derecha" (x × y = z). Con (z, arriba, x) queda
+    // espejada y la rotación que sale de ella está mal: los 2 muros laterales se dibujaban
+    // torcidos (la raya verde que cruzaba) aunque su choque estaba bien. Por eso el tercer eje
+    // se calcula con el producto cruz. El choque (agregarMuro) no cambia.
+    const m4 = new THREE.Matrix4().makeBasis(eje, arriba, new V3().crossVectors(eje, arriba));
     mesh.quaternion.setFromRotationMatrix(m4);
     grupo.add(mesh);
     piezas.muros.push({ mesh, solido, base: c.clone(), arriba, bajada: altoTotal + 0.1 });
