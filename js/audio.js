@@ -127,9 +127,35 @@ const SONIDOS = {
   canonListo:   { archivo: 'canon-listo.wav',   vol: 0.6 },
   // la pelea con Meowl (la mandó muxp): entra con crossfade desde la música del camino (musicaJefe del nivel)
   meowlPelea:   { archivo: 'meowl-pelea.mp3',   vol: 0.85, musica: true, loop: true, tarde: true },
+  // KEPLER (las mandó muxp). cruce = [de, a, seg]: al llegar al segundo «de», la canción
+  // vuelve al segundo «a» con un crossfade de «seg» segundos (no se corta: queda en bucle).
+  // entrada = desde dónde parte si no la pide una cinemática (salta la mini intro).
+  keplerCarrera: { archivo: 'kepler-carrera.mp3', vol: 0.8, musica: true, loop: true, tarde: true, cruce: [179, 2.5, 2], entrada: 2.5 },
+  meimeiPelea:   { archivo: 'meimei-pelea.mp3',   vol: 0.85, musica: true, loop: true, tarde: true, cruce: [65, 1, 1.2] },
+  // KEPLER: nieve, resortes y MeiMei (generados con herramientas/generar-sonidos.py kepler)
+  deslizar:      { archivo: 'deslizar-loop.wav', vol: 0.5, loop: true },
+  viento:        { archivo: 'viento-loop.wav',   vol: 0.45, loop: true, tarde: true },
+  nieve1:        { archivo: 'nieve1.wav',        vol: 0.4, tono: 0.1 },
+  nieve2:        { archivo: 'nieve2.wav',        vol: 0.4, tono: 0.1 },
+  nieve3:        { archivo: 'nieve3.wav',        vol: 0.4, tono: 0.1 },
+  resortePisa:   { archivo: 'resorte-pisa.wav',  vol: 0.6 },
+  resorteCarga:  { archivo: 'resorte-carga.wav', vol: 0.6 },
+  resorteSuelta: { archivo: 'resorte-suelta.wav', vol: 0.85 },
+  avalancha:     { archivo: 'avalancha.wav',     vol: 0.7 },
+  bolaTira:      { archivo: 'bola-tira.wav',     vol: 0.5, tono: 0.1 },
+  bolaRompe:     { archivo: 'bola-rompe.wav',    vol: 0.6, tono: 0.1 },
+  meimeiRisa:    { archivo: 'meimei-risa.wav',   vol: 0.7, tono: 0.05 },
+  meimeiCarga:   { archivo: 'meimei-carga.wav',  vol: 0.5 },
+  meimeiSalta:   { archivo: 'meimei-salta.wav',  vol: 0.7, tono: 0.06 },
+  meimeiDerrapa: { archivo: 'meimei-derrapa.wav', vol: 0.55 },
+  meimeiChoca:   { archivo: 'meimei-choca.wav',  vol: 0.9 },
+  meimeiGolpe:   { archivo: 'meimei-golpe.wav',  vol: 0.9 },
+  meimeiOrbita:  { archivo: 'meimei-orbita.wav', vol: 0.6 },
+  fragmento:     { archivo: 'fragmento.wav',     vol: 0.75 },
   // FALTA (si llega, se agrega aquí y ya suena): musicaMenu
 };
 const PASOS = ['paso1', 'paso2', 'paso3'];
+const PASOS_NIEVE = ['nieve1', 'nieve2', 'nieve3'];
 const VOCES = ['voz1', 'voz2', 'voz3', 'voz4', 'voz5', 'voz6'];
 
 /* ---------- volúmenes guardados (estado.js los guarda en localStorage) ---------- */
@@ -227,7 +253,7 @@ async function cargar(nombre, def) {
     const bytes = await r.arrayBuffer();
     // decodeAudioData con callbacks: así funciona también en Safari viejo
     buffers[nombre] = await new Promise((ok, mal) => ctx.decodeAudioData(bytes, ok, mal));
-    if (def.loop) bordes[nombre] = def.loopDe || bordesDelLoop(buffers[nombre]);
+    if (def.loop) bordes[nombre] = def.cruce ? [def.cruce[1], def.cruce[0]] : def.loopDe || bordesDelLoop(buffers[nombre]);
   } catch (e) { console.warn('[audio] no pude cargar', def.archivo, e); }
 }
 if (ctx) for (const [n, d] of Object.entries(SONIDOS)) if (!d.tarde) cargar(n, d);
@@ -272,17 +298,53 @@ export function sonar(nombre, op = {}) {
   const g = ctx.createGain();
   g.gain.value = def.vol * (op.vol ?? 1);
   if (op.subir) { const v = g.gain.value; g.gain.value = 0; g.gain.setTargetAtTime(v, ctx.currentTime, op.subir / 3); }
-  if (def.loop) { s.loop = true; [s.loopStart, s.loopEnd] = bordes[nombre]; }
+  if (def.loop) { s.loop = !def.cruce; [s.loopStart, s.loopEnd] = bordes[nombre]; }
   s.connect(g).connect(def.musica ? musica : efectos);
-  const t0 = Math.max(op.cuando || 0, ctx.currentTime), desde = op.desde ?? (def.loop ? s.loopStart : 0);
+  const t0 = Math.max(op.cuando || 0, ctx.currentTime);
+  const desde = op.desde ?? (def.cruce ? (def.entrada ?? 0) : def.loop ? s.loopStart : 0);
   s.start(t0, desde);
   _audio.ultimos.push(nombre); if (_audio.ultimos.length > 20) _audio.ultimos.shift();
-  return { s, g, t0, desde, nombre };
+  const h = { s, g, t0, desde, nombre };
+  if (def.cruce) { h.tCruce = t0 + Math.max(0, def.cruce[0] - desde) / s.playbackRate.value; cruces.add(h); }
+  return h;
 }
+
+/* =========================================================
+   BUCLE CON CROSSFADE (cruce: [de, a, seg] en la tabla)
+   ---------------------------------------------------------
+   Un loop normal salta de golpe del final al inicio. Aquí, al
+   llegar al segundo «de», partimos OTRA copia de la canción en el
+   segundo «a» y hacemos un crossfade de igual potencia (cos/sin)
+   entre las dos. Se programa con el reloj de audio, un poco antes
+   de que toque, para que calce exacto.
+   El "handle" h sigue siendo el mismo objeto: solo cambian su
+   fuente (h.s) y su volumen (h.g), así el resto del código no se
+   entera de que la canción dio la vuelta.
+   ========================================================= */
+const cruces = new Set();
+function dirigirCruces() {
+  for (const h of cruces) {
+    if (h.muerto) { cruces.delete(h); continue; }
+    if (ctx.currentTime < h.tCruce - 0.3) continue;
+    const [de, a, seg] = SONIDOS[h.nombre].cruce, T = Math.max(h.tCruce, ctx.currentTime + 0.02);
+    const nivel = h.g.gain.value;
+    const s = ctx.createBufferSource(); s.buffer = h.s.buffer; s.loopStart = a; s.loopEnd = de;
+    const g = ctx.createGain(); g.gain.value = 0;
+    g.gain.setValueCurveAtTime(curva(32, true).map(k => k * nivel), T, seg);
+    s.connect(g).connect(musica); s.start(T, a);
+    h.g.gain.cancelScheduledValues(T);
+    h.g.gain.setValueCurveAtTime(curva(32, false).map(k => k * nivel), T, seg);
+    try { h.s.stop(T + seg + 0.05); } catch (e) { /* ya paró */ }
+    h.s = s; h.g = g; h.t0 = T; h.desde = a; h.tCruce = T + (de - a);
+  }
+}
+/** Para una canción en el instante t (y deja de darle vueltas si tenía crossfade). */
+function parar(h, t) { h.muerto = true; try { h.s.stop(t); } catch (e) { /* ya paró */ } }
 
 /** Apaga de a poco un sonido que está sonando (lo que devolvió sonar). */
 function apagar(h, seg = 0.25) {
   if (!h) return;
+  h.muerto = true;
   const t = ctx.currentTime;
   h.g.gain.setTargetAtTime(0, t, seg / 3);
   try { h.s.stop(t + seg); } catch (e) { /* ya había terminado */ }
@@ -338,9 +400,13 @@ escuchar('nivel', def => {
   olvidarJefe(0.3);
   fondo.jefe = def.musicaJefe || null;               // canción propia del jefe de este nivel (Meowl)
   asegurar(fondo.jefe);
+  for (const n of def.precargar || []) asegurar(n);   // canciones que pedirá una cinemática (que estén listas a tiempo)
 });
 // una cinemática puede cambiar la música de fondo: emitir('musica', 'misteriosa') o null (silencio)
-escuchar('musica', nombre => {
+// también se puede pedir desde qué segundo parte: emitir('musica', { nombre: 'keplerCarrera', desde: 0 })
+escuchar('musica', pedido => {
+  const nombre = pedido && typeof pedido === 'object' ? pedido.nombre : pedido;
+  fondo.desde = pedido && typeof pedido === 'object' ? pedido.desde : null;
   if (fondo.nombre === nombre) return;
   apagar(fondo.h, 1.5); fondo.h = null; olvidarPelea(1.5);
   fondo.nombre = nombre;
@@ -392,7 +458,8 @@ function rampa(h, entra, seg) {
 /** ¿En qué segundo de la canción va? (para retomarla donde iba) */
 function posicion(h) {
   const [a, b] = [h.s.loopStart, h.s.loopEnd], largo = b - a, ya = Math.max(0, ctx.currentTime - h.t0);
-  return a + ((h.desde - a + ya) % largo + largo) % largo;
+  const x = h.desde + ya;                             // si aún no llega al final, va justo ahí (puede estar en la intro)
+  return x < b ? x : a + (x - a) % largo;
 }
 function olvidarPelea(seg) { apagar(pelea.h, seg); pelea.h = null; pelea.activa = false; pelea.retomar = null; pelea.sinEnemigos = 99; }
 /** ¿Algún enemigo te está persiguiendo? (lo decide enemigos.js: e.persigue) */
@@ -412,11 +479,11 @@ function dirigirPelea(dt) {
     pelea.h = sonar(def.combate, { vol: 0 });
     if (pelea.h) rampa(pelea.h, true, CRUCE);
     rampa(fondo.h, false, CRUCE);
-    const viejo = fondo.h; viejo.s.stop(ctx.currentTime + CRUCE + 0.05);
+    const viejo = fondo.h; parar(viejo, ctx.currentTime + CRUCE + 0.05);
     fondo.h = { ...viejo, enPausa: true };                       // marcador: la calma "está", pero callada
   } else if (!quiere && pelea.activa && pelea.sinEnemigos >= CALMA_TRAS) {   // SALE la pelea
     pelea.activa = false;
-    if (pelea.h) { rampa(pelea.h, false, CRUCE); pelea.h.s.stop(ctx.currentTime + CRUCE + 0.05); pelea.h = null; }
+    if (pelea.h) { rampa(pelea.h, false, CRUCE); parar(pelea.h, ctx.currentTime + CRUCE + 0.05); pelea.h = null; }
     fondo.h = sonar(fondo.nombre, { vol: 0, desde: pelea.retomar ?? undefined });
     if (fondo.h) rampa(fondo.h, true, CRUCE);
     pelea.retomar = null;
@@ -439,7 +506,7 @@ function entraJefe() {
   const t = ctx.currentTime;
   if (fondo.h && !fondo.h.enPausa) {
     jefeM.retomar = posicion(fondo.h);
-    rampa(fondo.h, false, CRUCE_JEFE); fondo.h.s.stop(t + CRUCE_JEFE + 0.05);
+    rampa(fondo.h, false, CRUCE_JEFE); parar(fondo.h, t + CRUCE_JEFE + 0.05);
   }
   fondo.h = null;
   apagar(pelea.h, CRUCE_JEFE); pelea.h = null; pelea.activa = false;
@@ -449,7 +516,7 @@ function entraJefe() {
 function saleJefe() {
   if (fondo.zona !== 'jefe' || !ctx) return;
   fondo.zona = 'calma'; fondo.calmaDesde = 0;
-  if (jefeM.h) { rampa(jefeM.h, false, CRUCE_JEFE); jefeM.h.s.stop(ctx.currentTime + CRUCE_JEFE + 0.05); jefeM.h = null; }
+  if (jefeM.h) { rampa(jefeM.h, false, CRUCE_JEFE); parar(jefeM.h, ctx.currentTime + CRUCE_JEFE + 0.05); jefeM.h = null; }
   fondo.h = sonar(fondo.nombre, { vol: 0, desde: jefeM.retomar ?? undefined });
   if (fondo.h) rampa(fondo.h, true, CRUCE_JEFE);
   jefeM.retomar = null;
@@ -464,7 +531,11 @@ function olvidarJefe(seg) {
 function dirigirFondo(dt) {
   const jugando = ['juego', 'cartel', 'cine'].includes(juego.modo);
   const quiere = jugando && !fondo.espacio && fondo.nombre && fondo.zona === 'calma' && ctx.currentTime >= fondo.calmaDesde;
-  if (quiere && !fondo.h) fondo.h = sonar(fondo.nombre, { subir: 2.5 });
+  if (quiere && !fondo.h) {
+    const desde = fondo.desde ?? undefined;
+    fondo.h = sonar(fondo.nombre, desde === undefined ? { subir: 2.5 } : { desde });
+    if (fondo.h) fondo.desde = null;
+  }
   if (!quiere && fondo.h) { if (!fondo.h.enPausa) apagar(fondo.h, 1.5); fondo.h = null; olvidarPelea(1.5); }
   if (quiere) dirigirPelea(dt);
   if (!jugando && fondo.tension) callarTension(0.5);
@@ -567,8 +638,10 @@ export function actualizarAudio(dt) {
   musica.gain.setTargetAtTime(ajustes.volMusica * (juego.modo === 'cartel' ? 0.4 : 1), ctx.currentTime, 0.2);
   if ((tema.loop || tema.entrada) && !['juego', 'cartel', 'cine'].includes(juego.modo)) callarTema(0.5);   // volviste al menú
   dirigirFondo(dt);
+  dirigirCruces();
   if (ecoActual && !['juego', 'cartel', 'cine'].includes(juego.modo)) ponerEco(null);   // en el menú no hay cueva
   if (fondo.espacio && !['cine', 'carga'].includes(juego.modo)) salirDelEspacio(1);     // por si saliste a medias
+  sonidosKepler();
   if (juego.modo !== 'juego' || !juego.jugador) return;
   pasos(dt);
   charla -= dt;
@@ -592,13 +665,14 @@ const ZANCADA = 1.9;
 let zancada = 0;
 function pasos(dt) {
   const p = juego.jugador;
-  if (!p.grounded || (p.state !== 'normal' && p.state !== 'punch')) { zancada = ZANCADA * 0.6; return; }
+  if (!p.grounded || p.deslizando || (p.state !== 'normal' && p.state !== 'punch')) { zancada = ZANCADA * 0.6; return; }
   const v = p.vel.length();                             // casi toda es horizontal en el suelo
   if (v < 1) return;
   zancada += v * dt;
   if (zancada < ZANCADA) return;
   zancada -= ZANCADA;
-  sonar(PASOS[Math.floor(Math.random() * PASOS.length)], { vol: Math.min(1, 0.4 + v / 12) });
+  const lista = juego.nivel && juego.nivel.deslizar ? PASOS_NIEVE : PASOS;     // en Kepler, crujidos de nieve
+  sonar(lista[Math.floor(Math.random() * lista.length)], { vol: Math.min(1, 0.4 + v / 12) });
 }
 
 /* ---------- botones del menú: encima (PC) y elegir ---------- */
@@ -645,3 +719,42 @@ for (const n of ['estalactitaCruje', 'estalactitaCae', 'estalactitaRompe', 'frag
   'meowlGolpe', 'meowlVuela', 'meowlitoSale', 'meowlitoCarga', 'meowlitoLanza', 'canonSube', 'canonListo'])
   escuchar(n, () => sonar(n));
 escuchar('meowlConfeti', () => sonar('confeti'));
+
+/* =========================================================
+   KEPLER
+   ---------------------------------------------------------
+   Al patinar suena un "shhh" que depende de tu rapidez v:
+     volumen = v / 25 (hasta 1)    tono = 0,7 + v / 40
+   Más rápido = más fuerte y más agudo (como el viento en la cara).
+   El viento de la montaña suena de fondo todo el nivel.
+   ========================================================= */
+const kep = { patin: null, viento: null };
+function sonidosKepler() {
+  const enKepler = juego.nivel && juego.nivel.id === 'kepler' && ['juego', 'cartel', 'cine'].includes(juego.modo);
+  if (enKepler && !kep.viento) { asegurar('viento'); kep.viento = sonar('viento', { subir: 3 }); }
+  if (!enKepler && kep.viento) { apagar(kep.viento, 1.5); kep.viento = null; }
+  const p = juego.jugador;
+  const patina = enKepler && juego.modo === 'juego' && p && p.deslizando && p.grounded;
+  const v = patina ? p.vel.length() : 0;
+  if (patina && v > 2) {
+    if (!kep.patin) kep.patin = sonar('deslizar', { vol: 0 });
+    if (kep.patin) {
+      kep.patin.g.gain.setTargetAtTime(SONIDOS.deslizar.vol * Math.min(1, v / 25), ctx.currentTime, 0.08);
+      kep.patin.s.playbackRate.setTargetAtTime(0.7 + v / 40, ctx.currentTime, 0.1);
+    }
+  } else if (kep.patin) { kep.patin.g.gain.setTargetAtTime(0, ctx.currentTime, 0.1); if (!patina || v <= 2) { apagar(kep.patin, 0.3); kep.patin = null; } }
+}
+for (const n of ['resortePisa', 'resorteCarga', 'resorteSuelta', 'bolaTira', 'meimeiRisa', 'meimeiCarga', 'meimeiSalta',
+  'meimeiDerrapa', 'meimeiChoca', 'meimeiGolpe', 'meimeiOrbita', 'fragmento'])
+  escuchar(n, () => sonar(n));
+escuchar('meimeiSeVa', () => sonar('meimeiRisa', { tono: 1.1 }));
+escuchar('meimeiLlama', () => sonar('meimeiRisa', { tono: 0.9 }));
+escuchar('meimeiHuye', () => sonar('meimeiSalta', { tono: 1.15 }));
+escuchar('meimeiMareada', () => sonar('meowlMareado'));
+escuchar('meimeiCansada', () => sonar('meowlMareado', { tono: 0.85 }));
+escuchar('meimeiAterriza', () => sonar('tocaSuelo'));
+escuchar('seEscapo', () => sonar('rescate'));
+escuchar('marcoLuna', () => sonar('cargaTarjeta', { tono: 0.8 }));
+// a la distancia d (m): más lejos, más bajito
+escuchar('bolaRompe', d => sonar('bolaRompe', { vol: Math.max(0.15, 1 - (d || 0) / 40) }));
+escuchar('avalancha', d => sonar('avalancha', { vol: Math.max(0.2, 1 - (d || 0) / 260) }));

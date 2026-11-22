@@ -65,6 +65,16 @@ body:not(.lab) .tb.lab { display: none }
 #toast.ver { opacity: 1; transform: translate(-50%,-50%) scale(1) }
 #toast small { display: block; font-size: 14px; font-weight: 600; opacity: .85; margin-top: 6px }
 
+/* Kepler: flecha hacia MeiMei (apunta a +x; kepler.js la gira) y aviso del resorte */
+#flechaMei { position: fixed; z-index: 5; left: 0; top: 0; width: 34px; height: 28px; pointer-events: none;
+  background: #f4f7ff; clip-path: polygon(100% 50%, 0 0, 22% 50%, 0 100%);
+  filter: drop-shadow(0 0 6px rgba(150,220,255,.9)) drop-shadow(0 2px 3px rgba(0,0,0,.6)) }
+#avisoK { position: fixed; z-index: 6; left: 50%; transform: translateX(-50%); bottom: calc(26% + var(--sb, 0px));
+  padding: 8px 16px; border-radius: 14px; background: rgba(8,14,34,.72); border: 1px solid rgba(140,220,255,.5);
+  text-align: center; font: 800 18px/1.25 ui-rounded, system-ui, sans-serif; color: #eaf6ff; pointer-events: none; max-width: 86vw }
+#avisoK b { color: #8fe3ff }
+#avisoK small { display: block; font-size: 12px; font-weight: 600; opacity: .8; margin-top: 3px }
+
 /* barra del supersalto */
 #barra { position: fixed; z-index: 6; left: 50%; transform: translateX(-50%); top: calc(136px + var(--st));
   width: min(86vw, 380px); background: rgba(8,10,24,.7); border: 1px solid rgba(255,255,255,.2); border-radius: 14px;

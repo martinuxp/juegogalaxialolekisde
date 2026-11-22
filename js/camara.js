@@ -11,7 +11,7 @@ import { V3, clamp, damp, tangent, anyPerp } from './util.js';
 import { camera } from './escena.js';
 import { input } from './entrada.js';
 import { juego } from './estado.js';
-import { mundo } from './fisica.js';
+import { mundo, rayoRelieve } from './fisica.js';
 
 export const cam = {
   fwd: new V3(0, 0, -1), up: new V3(0, 1, 0),
@@ -32,7 +32,14 @@ export function updateCamera(dt) {
   if (cam.fwd.lengthSq() < 1e-6) anyPerp(cam.fwd, cam.up);
   cam.fwd.normalize();
   const yaw = input.camDX * 0.007; input.camDX = 0;   // dedo o mouse arrastrando (entrada.js)
-  if (yaw) cam.fwd.applyAxisAngle(cam.up, -yaw);
+  if (yaw) { cam.fwd.applyAxisAngle(cam.up, -yaw); cam.manualT = 1.2; }
+  cam.manualT = (cam.manualT || 0) - dt;
+  // PATINANDO RÁPIDO (Kepler): la cámara se pone sola detrás de hacia donde vas (a 25 m/s no da
+  // para girarla con el dedo). Si la mueves tú, te hace caso 1,2 s.
+  if (p.deslizando !== undefined && juego.nivel && juego.nivel.deslizar && p.rapidez > 6 && cam.manualT <= 0 && !volando) {
+    tangent(_c3, p.vel, cam.up);
+    if (_c3.lengthSq() > 1) cam.fwd.lerp(_c3.normalize(), damp(2.4, dt)).normalize();
+  }
   cam.pitch = clamp(cam.pitch + input.camDY * 0.004, 0.08, 1.25); input.camDY = 0;
   if (input.recenter) { cam.fwd.copy(p.facing); input.recenter = false; }
 
@@ -43,6 +50,8 @@ export function updateCamera(dt) {
     const altura = p.pos.distanceTo(p.planet.c) - p.planet.R;
     objetivo = 16 + clamp(altura * 0.5, 0, 30);
   }
+  // más rápido = cámara más lejos (así ves lo que viene)
+  if (juego.nivel && juego.nivel.deslizar && !volando) objetivo += clamp((p.rapidez - 9) * 0.28, 0, 5.5);
   if (cam.limite) objetivo = Math.min(objetivo, cam.limite.dist);
   cam.distActual += (objetivo - cam.distActual) * damp(2.5, dt);
   // con techo bajo, la cámara baja (menos ángulo) para no quedar pegada al techo
@@ -116,6 +125,8 @@ function rayoLibre(o, d, L) {
     }
     if (entra <= sale && entra > 0 && entra < tMin) tMin = entra;
   }
+  // montañas de Kepler (relieve en grilla): el rayo avanza de a poco hasta quedar bajo el suelo
+  for (const P of mundo.planetas) if (P.relieve) tMin = Math.min(tMin, rayoRelieve(P, o, d, tMin, 1.2));
   return tMin;
 }
 function noAtravesar(target, dt) {
@@ -136,6 +147,9 @@ function noAtravesar(target, dt) {
   distLibre = libre < distLibre ? libre : distLibre + (libre - distLibre) * damp(3, dt);
   if (distLibre < L - 1e-3 || tMin < L) camera.position.copy(target).addScaledVector(_rd, Math.min(distLibre, L));
 }
+
+/** Mueve la cámara junto con el jugador cuando lo lleva una luna (Kepler): si no, quedaría atrás. */
+export function moverCamara(delta) { cam.pos.add(delta); cam.look.add(delta); }
 
 /** Pone la cámara detrás del jugador de golpe (al empezar un nivel). */
 export function camaraAlInicio() {

@@ -803,10 +803,193 @@ def generar_icaro():
     guardar('super-salto.wav', super_salto(), 0.75)
 
 
+# ---------------------------------------------------------------- Kepler (nieve, resortes y MeiMei)
+def deslizar_loop():
+    """Patinar en la nieve: 'shhhh' continuo (ruido entre 900 y 5000 Hz) con un vaivén lento.
+    El ruido de la FFT es periódico: el loop empalma solo. audio.js le cambia volumen y tono con tu rapidez."""
+    n = int(2.0 * SR)
+    t = np.arange(n) / SR
+    shh = ruido_filtrado(n, 900, 5000, 901)
+    grave = ruido_filtrado(n, 120, 600, 902) * 0.6
+    vaiven = 1 + 0.25 * np.sin(2 * np.pi * 2 * t)          # 2 vaivenes por vuelta (entero: también empalma)
+    return (shh + grave) * vaiven
+
+
+def nieve_crujido(semilla):
+    """Pisada en nieve: crujido de granitos (ruido en ráfagas cortas) + 'tum' sordo."""
+    t = tiempo(0.16)
+    g = np.random.default_rng(semilla)
+    granos = ruido_filtrado(len(t), 1800, 7000, semilla) * (g.random(len(t)) < 0.25) * 4
+    tum = oscilar(90 + 40 * np.exp(-t / 0.01)) * np.exp(-t / 0.03)
+    return (granos * np.exp(-t / 0.05) + tum) * np.minimum(1, t / 0.002)
+
+
+def resorte_pisa():
+    """Te subes al plato: 'clonc' metálico (dos parciales inarmónicos que se apagan)."""
+    t = tiempo(0.5)
+    x = sum(a * oscilar(np.full(len(t), f)) * np.exp(-t / d) for f, a, d in ((420, 1, 0.12), (1130, 0.5, 0.07), (2290, 0.25, 0.04)))
+    return x * np.minimum(1, t / 0.001)
+
+
+def resorte_carga():
+    """El resorte se comprime: un 'boooiinn' que baja (se pone tenso) en 0,45 s."""
+    t = tiempo(0.5)
+    k = t / t[-1]
+    f = 520 * (180 / 520) ** k
+    vib = 1 + 0.4 * np.sin(2 * np.pi * 22 * t)
+    return (oscilar(f) + 0.3 * oscilar(f * 2.01)) * vib * np.minimum(1, t / 0.01) * (0.6 + 0.4 * k)
+
+
+def resorte_suelta():
+    """¡SUELTA!: un 'BOING' que sube muy rápido + golpe grave + soplido."""
+    t = tiempo(1.3)
+    k = t / t[-1]
+    f = 160 * (900 / 160) ** np.minimum(1, k * 3)
+    boing = (oscilar(f) + 0.4 * oscilar(f * 1.5)) * (1 + 0.5 * np.sin(2 * np.pi * 14 * t)) * np.exp(-t / 0.4)
+    golpe = oscilar(60 + 80 * np.exp(-t / 0.02)) * np.exp(-t / 0.1) * 1.5
+    aire = ruido_filtrado(len(t), 500, 3000, 911) * np.sin(np.pi * k) * 1.5
+    return boing + golpe + aire
+
+
+def avalancha():
+    """Avalancha lejana: retumbo grave que crece y se apaga (5 s)."""
+    t = tiempo(5.0)
+    k = t / t[-1]
+    ret = ruido_filtrado(len(t), 30, 260, 921) * 6
+    sh = ruido_filtrado(len(t), 400, 1800, 922) * 1.2
+    return (ret + sh) * np.sin(np.pi * k) ** 1.5
+
+
+def bola_tira():
+    """Lanza una bola de nieve: 'fuip' de aire corto."""
+    t = tiempo(0.3)
+    k = t / t[-1]
+    return ruido_filtrado(len(t), 800, 3500, 931) * np.sin(np.pi * k) ** 2 * 3
+
+
+def bola_rompe():
+    """La bola se revienta: 'puf' de nieve (ruido que se apaga rápido) + crujido."""
+    t = tiempo(0.45)
+    puf = ruido_filtrado(len(t), 300, 4000, 941) * np.exp(-t / 0.08) * 4
+    cru = np.zeros_like(t); c = nieve_crujido(942); cru[: len(c)] = c
+    return (puf + cru) * np.minimum(1, t / 0.002)
+
+
+def maullido(t0, dur, f0, f1, t):
+    """Un 'miau' corto: tono que sube a f1 y baja, con armónicos (la boca se abre y se cierra)."""
+    x = np.zeros_like(t)
+    m = (t >= t0) & (t < t0 + dur)
+    k = (t[m] - t0) / dur
+    f = f0 + (f1 - f0) * np.sin(np.pi * k ** 0.7)
+    x[m] = (oscilar(f) + 0.5 * oscilar(f * 2) + 0.25 * oscilar(f * 3)) * np.sin(np.pi * k) ** 0.8
+    return x
+
+
+def meimei_risa():
+    """La risita de MeiMei: tres maullidos cortos y agudos que bajan ('mi-mi-miau')."""
+    t = tiempo(1.0)
+    return maullido(0, 0.16, 700, 980, t) + maullido(0.2, 0.16, 660, 920, t) + maullido(0.42, 0.45, 600, 900, t)
+
+
+def meimei_carga():
+    """MeiMei se agacha antes de saltar: un brillo helado que sube (cristalitos)."""
+    t = tiempo(0.55)
+    k = t / t[-1]
+    f = 1200 * (3200 / 1200) ** k
+    return (oscilar(f) + 0.5 * oscilar(f * 1.26)) * (0.2 + 0.8 * k) * (1 + 0.6 * np.sin(2 * np.pi * 34 * t))
+
+
+def meimei_salta():
+    """El salto: soplido + maullido corto."""
+    t = tiempo(0.6)
+    k = t / t[-1]
+    aire = ruido_filtrado(len(t), 600, 3000, 951) * np.sin(np.pi * k) * 2
+    return aire + maullido(0, 0.3, 560, 820, t)
+
+
+def meimei_derrapa():
+    """Derrapa en el hielo: chirrido de garras (ruido agudo con un tono que tiembla) que se apaga."""
+    t = tiempo(1.4)
+    k = t / t[-1]
+    chirrido = oscilar(2400 + 300 * np.sin(2 * np.pi * 9 * t)) * 0.3
+    hielo = ruido_filtrado(len(t), 2000, 8000, 961) * 2
+    return (chirrido + hielo) * (1 - k) ** 1.5 * np.minimum(1, t / 0.01)
+
+
+def meimei_choca():
+    """Se estrella con un pilar de hielo: golpe seco + cristales que tintinean."""
+    t = tiempo(1.2)
+    golpe = oscilar(80 + 120 * np.exp(-t / 0.015)) * np.exp(-t / 0.12) * 2
+    crack = ruido_filtrado(len(t), 1500, 9000, 971) * np.exp(-t / 0.05) * 4
+    tin = sum(oscilar(np.full(len(t), f)) * np.exp(-np.maximum(0, t - d) / 0.25) * (t > d) * 0.3
+              for f, d in ((3100, 0.05), (4200, 0.12), (3600, 0.22), (5200, 0.3)))
+    return golpe + crack + tin
+
+
+def meimei_golpe():
+    """¡Le caíste encima!: 'pum' + maullido ofendido."""
+    t = tiempo(0.9)
+    pum = oscilar(70 + 100 * np.exp(-t / 0.02)) * np.exp(-t / 0.1) * 2
+    return pum + maullido(0.1, 0.5, 900, 520, t) * 0.8
+
+
+def meimei_orbita():
+    """El salto orbital: un 'fiuuuuu' que sube y se queda zumbando (da la vuelta a la luna)."""
+    t = tiempo(2.0)
+    k = t / t[-1]
+    f = 300 * (700 / 300) ** np.minimum(1, k * 2)
+    tono = oscilar(f) * 0.6 + oscilar(f * 1.5) * 0.2
+    aire = ruido_filtrado(len(t), 500, 2500, 981)
+    return (tono + aire) * np.minimum(1, t / 0.05) * np.where(k > 0.7, (1 - k) / 0.3, 1)
+
+
+def fragmento():
+    """Tomas el fragmento: arpegio de campanitas hacia arriba (do-mi-sol-do)."""
+    t = tiempo(1.6)
+    x = np.zeros_like(t)
+    for i, f in enumerate((523.25, 659.25, 783.99, 1046.5, 1318.5)):
+        x += campana(t, 0.09 * i, f, 0.8)
+    return x
+
+
+def viento_loop():
+    """Viento de montaña (estéreo): dos ruidos graves distintos que suben y bajan lento. Empalma solo."""
+    n = int(8.0 * SR)
+    t = np.arange(n) / SR
+    i = ruido_filtrado(n, 80, 900, 991) * (1 + 0.6 * np.sin(2 * np.pi * t / 4))
+    d = ruido_filtrado(n, 80, 900, 992) * (1 + 0.6 * np.sin(2 * np.pi * t / 4 + 2))
+    silbido = ruido_filtrado(n, 1200, 2200, 993) * 0.25 * (1 + np.sin(2 * np.pi * t / 8))
+    return np.vstack([i + silbido, d + silbido])
+
+
+def generar_kepler():
+    guardar('deslizar-loop.wav', deslizar_loop(), 0.6)
+    for i in (1, 2, 3):
+        guardar(f'nieve{i}.wav', nieve_crujido(800 + i), 0.6)
+    guardar('resorte-pisa.wav', resorte_pisa(), 0.6)
+    guardar('resorte-carga.wav', resorte_carga(), 0.6)
+    guardar('resorte-suelta.wav', resorte_suelta(), 0.85)
+    guardar('avalancha.wav', avalancha(), 0.8)
+    guardar('bola-tira.wav', bola_tira(), 0.55)
+    guardar('bola-rompe.wav', bola_rompe(), 0.7)
+    guardar('meimei-risa.wav', meimei_risa(), 0.7)
+    guardar('meimei-carga.wav', meimei_carga(), 0.5)
+    guardar('meimei-salta.wav', meimei_salta(), 0.7)
+    guardar('meimei-derrapa.wav', meimei_derrapa(), 0.6)
+    guardar('meimei-choca.wav', meimei_choca(), 0.85)
+    guardar('meimei-golpe.wav', meimei_golpe(), 0.85)
+    guardar('meimei-orbita.wav', meimei_orbita(), 0.6)
+    guardar('fragmento.wav', fragmento(), 0.75)
+    guardar_estereo('viento-loop.wav', viento_loop(), 0.6)
+
+
 if __name__ == '__main__':
     import sys
     if 'superficie' in sys.argv:       # python3 herramientas/generar-sonidos.py superficie → peligros de la cueva, superficie y Meowl
         generar_superficie()
+        sys.exit()
+    if 'kepler' in sys.argv:           # python3 herramientas/generar-sonidos.py kepler → nieve, resortes y MeiMei
+        generar_kepler()
         sys.exit()
     if 'icaro' in sys.argv:            # python3 herramientas/generar-sonidos.py icaro → solo los de Ícaro
         generar_icaro()
@@ -833,3 +1016,4 @@ if __name__ == '__main__':
     # Ícaro (llegada y cueva)
     generar_icaro()
     generar_superficie()
+    generar_kepler()

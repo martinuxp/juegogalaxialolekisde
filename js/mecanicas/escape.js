@@ -131,7 +131,8 @@ let opacidad = 0;
 export function actualizarEscape(dt) {
   const p = juego.jugador;
   const cargando = p.state === 'carga';
-  const volando = p.state === 'vuelo';
+  // en Kepler el vuelo es por un resorte (no por el cañón): la barra de v_esc no corresponde
+  const volando = p.state === 'vuelo' && !(juego.nivel && juego.nivel.deslizar);
   escape.visible = cargando || volando;
 
   if (p.planet) escape.vesc = velocidadEscape(p.planet, p.pos.distanceTo(p.planet.c));

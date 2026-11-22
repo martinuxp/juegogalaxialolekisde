@@ -41,6 +41,8 @@ import { iniciarLlegada, actualizarCineIcaro, saltarCineIcaro, reanudarIcaro, _i
 import { NIVELES, LABORATORIO, SUPERFICIE_ICARO } from './niveles/index.js';
 import { iniciarSalidaSuperficie, actualizarCineSuperficie, saltarCineSuperficie, reanudarSuperficie, guardarParte } from './superficie.js';
 import { pm as _meowl } from './meowl.js';
+import { mei as _mei } from './meimei.js';
+import { iniciarLlegadaKepler, actualizarCineKepler, saltarCineKepler, reanudarKepler, kep as _kepler } from './kepler.js';
 import { abrirEditor, frameEditor, conectarEditor, volverAlEditor, ed } from './editor/editor.js';
 
 window.__gameStarted = true;
@@ -80,6 +82,16 @@ function empezarNivel(i, conCine = false) {
   mostrarMenu(false);
   jugadorALaPlaya(false);
   cargarNivel(NIVELES[i]);
+  if (NIVELES[i].intro === 'kepler') {
+    // Kepler: si ya ibas en la carrera (o en la luna), sigues ahí; si no, llegada en el cañón de Ícaro (kepler.js)
+    if (reanudarKepler()) { juego.modo = 'juego'; mostrarHUD(true); tituloNivel(); return; }
+    $('saltarCine').classList.remove('oculto');
+    iniciarLlegadaKepler(() => {
+      $('saltarCine').classList.add('oculto');
+      juego.modo = 'juego'; mostrarHUD(true); tituloNivel();
+    });
+    return;
+  }
   if (NIVELES[i].intro === 'icaro' && reanudarIcaro()) {
     juego.modo = 'juego'; mostrarHUD(true); tituloNivel();         // ya tenías las botas: sigues en la cueva (o en tu repisa)
   } else if (NIVELES[i].intro === 'icaro') {
@@ -139,8 +151,8 @@ $('tMenu').onclick = () => ed.probando ? volverAlEditor() : irAlMenu();   // pro
 function editor() { mostrarMenu(false); jugadorALaPlaya(false); abrirEditor(); }
 $('mEditor').onclick = editor;
 conectarEditor(irAlMenu);
-$('saltarCine').onclick = () => saltarCineIcaro() || saltarCineSuperficie() || saltarDespertar();
-addEventListener('keydown', e => { if (juego.modo === 'cine' && (e.code === 'Escape' || e.code === 'Enter') && !(e.code === 'Enter' && _icaro.C.activo)) saltarCineIcaro() || saltarCineSuperficie() || saltarDespertar(); });
+$('saltarCine').onclick = () => saltarCineIcaro() || saltarCineSuperficie() || saltarCineKepler() || saltarDespertar();
+addEventListener('keydown', e => { if (juego.modo === 'cine' && (e.code === 'Escape' || e.code === 'Enter') && !(e.code === 'Enter' && _icaro.C.activo)) saltarCineIcaro() || saltarCineSuperficie() || saltarCineKepler() || saltarDespertar(); });
 
 /* ---------- HORIZONTAL OBLIGATORIO EN CELULAR ----------
    El navegador no deja girar la pantalla solo. Lo que sí podemos:
@@ -162,6 +174,7 @@ let last = performance.now(), acc = 0, tiempo = 0;
 let tFisica = 0;
 function step(dt) {
   tFisica += dt;
+  if (juego.nivel && juego.nivel.antesDelPaso) juego.nivel.antesDelPaso(dt);   // Kepler: las lunas se mueven y te llevan
   stepPlayer(dt);
   stepEnemies(dt);
   stepContacts();
@@ -204,7 +217,7 @@ function frame(now) {
   actualizarEscape(dt);
 
   const dtCine = vertical.matches ? 0 : dt;           // en vertical, la cinemática también espera
-  if (!actualizarDespertar(dtCine) && !actualizarCineOvni(dtCine) && !actualizarCineDespegue(dtCine) && !actualizarCineIcaro(dtCine) && !actualizarCineSuperficie(dtCine)) updateCamera(dt);
+  if (!actualizarDespertar(dtCine) && !actualizarCineOvni(dtCine) && !actualizarCineDespegue(dtCine) && !actualizarCineIcaro(dtCine) && !actualizarCineSuperficie(dtCine) && !actualizarCineKepler(dtCine)) updateCamera(dt);
   renderer.render(scene, camera);
   if (jugando) actualizarHUD(dt);
 }
@@ -227,4 +240,6 @@ window.__game = {
   icaro: _icaro,
   superficie: (conCine = false) => { limpiarEntrada(); irSuperficie(conCine); },
   meowl: _meowl,
+  kepler: _kepler,
+  meimei: _mei,
 };

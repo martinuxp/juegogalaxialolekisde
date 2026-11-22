@@ -77,7 +77,11 @@ export function gravedadEn(pos, out = { planeta: null, g: 0, dir: new V3() }) {
   let mejor = mundo.planetas[0];
   let mejorG = -1;
   for (const P of mundo.planetas) {
-    const g = gravedadDePlaneta(P, pos.distanceTo(P.c));
+    const d = pos.distanceTo(P.c);
+    // ESFERA DE HILL (lunas de Kepler): adentro de ella manda la luna, aunque el planeta atraiga más.
+    // Tú y la luna caen juntos alrededor del planeta, así que respecto a la luna solo sientes su gravedad.
+    if (P.hill && d < P.hill) { mejor = P; mejorG = gravedadDePlaneta(P, d); break; }
+    const g = gravedadDePlaneta(P, d);
     if (g > mejorG) { mejorG = g; mejor = P; }
   }
   out.planeta = mejor;
@@ -101,6 +105,7 @@ export function makeBody(r) {
     facing: new V3(0, 0, -1),     // hacia dónde mira
     grounded: false,
     planet: null, gmag: 0, gdir: new V3(0, -1, 0),
+    normal: new V3(0, 1, 0),      // normal del último suelo que tocó (para el roce al deslizar)
   };
 }
 
@@ -132,6 +137,7 @@ export function collide(b) {
   b.grounded = false;
   let toco = null;
   for (const s of mundo.solidos) {
+    if (s.relieve) { if (chocarRelieve(b, s)) toco = s; continue; }
     _cn.copy(b.pos).sub(s.c);
     const d = _cn.length();
     const min = s.R + b.r;
@@ -140,7 +146,7 @@ export function collide(b) {
       b.pos.copy(s.c).addScaledVector(_cn, min);
       const vn = b.vel.dot(_cn);
       if (vn < 0) b.vel.addScaledVector(_cn, -vn);
-      if (_cn.dot(b.up) > 0.45) b.grounded = true;
+      if (_cn.dot(b.up) > 0.45) { b.grounded = true; if (b.normal) b.normal.copy(_cn); }
       toco = s;
     }
   }
@@ -174,8 +180,64 @@ function chocarMuro(b, m) {
     .addScaledVector(_n, b.r);                                     // queda justo tocando la caja
   const vn = b.vel.dot(_n);
   if (vn < 0) b.vel.addScaledVector(_n, -vn);                      // se quita la velocidad hacia adentro
-  if (_n.dot(b.up) > 0.45) b.grounded = true;
+  if (_n.dot(b.up) > 0.45) { b.grounded = true; if (b.normal) b.normal.copy(_n); }
   return true;
+}
+
+/**
+ * Choque con un planeta con RELIEVE (Kepler: montañas guardadas en una grilla, keplerDatos.js).
+ * Cerca del cuerpo, el suelo se parece a un PLANO que pasa por el punto del suelo bajo él y tiene
+ * la normal n del relieve. La distancia del centro del cuerpo a ese plano es
+ *     (altura sobre el suelo) · cos α     (α = ángulo entre la normal y la vertical)
+ * Si es menor que el radio del cuerpo, lo empujamos hacia afuera a lo largo de n y le quitamos
+ * la velocidad que iba contra el suelo (igual que con las esferas).
+ */
+const _ru = new V3(), _rn = new V3();
+function chocarRelieve(b, P) {
+  _ru.copy(b.pos).sub(P.c);
+  const d = _ru.length();
+  if (d > P.relieve.max + b.r || d < 1e-6) return false;
+  _ru.divideScalar(d);
+  const sobre = d - P.relieve.radio(_ru);                         // altura sobre el suelo (negativa = enterrado)
+  if (sobre > b.r + 1) return false;
+  P.relieve.normal(_ru, _rn);
+  const dist = sobre * _rn.dot(_ru);
+  if (dist >= b.r + 0.1) return false;
+  if (dist >= b.r) {
+    // a menos de 10 cm del suelo y sin ir despegando: cuenta como "en el suelo" (si no, cada
+    // bultito de la grilla te haría saltar y perderías el control al patinar). No se empuja.
+    if (b.vel.dot(_rn) < 1.5 && _rn.dot(b.up) > 0.45) { b.grounded = true; if (b.normal) b.normal.copy(_rn); }
+    return false;
+  }
+  b.pos.addScaledVector(_rn, b.r - dist);
+  const vn = b.vel.dot(_rn);
+  if (vn < 0) b.vel.addScaledVector(_rn, -vn);
+  if (_rn.dot(b.up) > 0.45) { b.grounded = true; if (b.normal) b.normal.copy(_rn); }
+  return true;
+}
+
+/**
+ * Rayo contra el relieve: avanza de a "paso" metros hasta quedar bajo el suelo y después
+ * afina por bisección. Devuelve la distancia al choque o L si no choca antes.
+ */
+export function rayoRelieve(P, o, d, L, paso = 1.5) {
+  let prev = 0;
+  for (let t = paso * 0.5; t <= L + 1e-6; t += paso) {
+    _ru.copy(o).addScaledVector(d, t).sub(P.c);
+    const r = _ru.length();
+    if (r < P.relieve.radio(_ru.divideScalar(r))) {
+      let a = prev, z = t;
+      for (let k = 0; k < 6; k++) {
+        const m = (a + z) / 2;
+        _ru.copy(o).addScaledVector(d, m).sub(P.c);
+        const rm = _ru.length();
+        if (rm < P.relieve.radio(_ru.divideScalar(rm))) z = m; else a = m;
+      }
+      return a;
+    }
+    prev = t;
+  }
+  return L;
 }
 
 /* ---------------------------------------------------------
@@ -204,6 +266,7 @@ export function pasoNewton(pos, vel, dt) {
 /** ¿El punto está tocando algún sólido? Devuelve el sólido o null. */
 export function tocaSolido(pos, radio) {
   for (const s of mundo.solidos) {
+    if (s.relieve) { _ru.copy(pos).sub(s.c); const d = _ru.length(); if (d < s.relieve.max + radio && d - s.relieve.radio(_ru.divideScalar(d)) < radio) return s; continue; }
     if (pos.distanceTo(s.c) < s.R + radio) return s;
   }
   return null;
@@ -238,7 +301,7 @@ export function simularTrayectoria(pos0, vel0, { dt = 1 / 120, tMax = 12, radio 
  * Sirve para poner cosas "paradas en el suelo".
  */
 export function superficieEn(P, dir) {
-  let mejor = P.R;
+  let mejor = P.relieve ? P.relieve.radio(dir) : P.R;
   for (const s of mundo.solidos) {
     if (s !== P && s.planeta !== P) continue;     // solo P y SUS islas y rocas (no otro planeta que esté en esa dirección)
     // rayo desde el centro de P hacia afuera: buscamos dónde sale de la esfera s

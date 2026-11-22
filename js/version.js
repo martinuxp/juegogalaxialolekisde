@@ -10,6 +10,7 @@
      · fecha: el día del cambio (hora de Chile)
    ========================================================= */
 export const HISTORIAL = [
+  { v: '0.21', fecha: '22 nov', cambios: 'Kepler (nivel 3): carrera patinando por un planeta de montañas nevadas detrás de MeiMei, la leopardo de las nieves que robó un fragmento de la luna. Deslizar con pendiente, roce y aire, carámbanos y avalanchas, lunas en órbita de verdad (3ª ley de Kepler), resorte que apunta adelantado a la Luna 2, pelea en la luna con salto orbital y resorte de salida a Aestus. Música de muxp con bucle por crossfade' },
   { v: '0.20', fecha: '20 nov', cambios: 'Ícaro: meowlitos escondidos que salen del suelo en el laberinto y de la arena en el camino, más gatos-alien en el laberinto, ruinas del desierto sólidas (columnas, arco, obeliscos, estatua) y música: la pelea de la cueva suena en el camino y la de Meowl entra con crossfade' },
   { v: '0.19', fecha: '20 nov', cambios: 'Ícaro desde arriba: desierto de arena hirviendo que quema, islas y pasillos de roca, fisuras que piden las botas, cinemática al salir de la grieta, jefe Meowl con sus meowlitos, confeti y cañón a Kepler. Sonidos nuevos del desierto y de la pelea' },
   { v: '0.18', fecha: '20 nov', cambios: 'Ícaro: pozo vertical procedural con capas de colores, repisas con gatos-alien, eco en la cueva y salida a la luz. Jugar sigue en el planeta donde ibas y Ícaro guarda las botas y la última repisa' },
