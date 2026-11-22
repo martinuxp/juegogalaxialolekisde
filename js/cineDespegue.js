@@ -81,8 +81,9 @@ export function iniciarDespegue() {
   // cámara: al lado del cañón, un poco arriba. Desde ahí se ve el horizonte de Columba abajo,
   // al jugador subiendo y a Ícaro de fondo (están casi en la misma línea).
   const P = mundo.planetas[0];
-  const arriba = (piezas.canon ? piezas.canon.userData.dir : c.dir).clone();
-  const base = piezas.canon ? piezas.canon.userData.boca : P.c.clone().addScaledVector(arriba, (P.mar || P.R) + 2);
+  const cd = juego.nivel && juego.nivel.camDespegue ? juego.nivel.camDespegue() : null;   // Kepler: se despega desde una luna
+  const arriba = cd ? cd.arriba.clone() : (piezas.canon ? piezas.canon.userData.dir : c.dir).clone();
+  const base = cd ? cd.base.clone() : piezas.canon ? piezas.canon.userData.boca : P.c.clone().addScaledVector(arriba, (P.mar || P.R) + 2);
   const lado = new V3().crossVectors(arriba, Math.abs(arriba.y) > 0.9 ? new V3(1, 0, 0) : new V3(0, 1, 0)).normalize();
   c.camPos.copy(base).addScaledVector(lado, 20).addScaledVector(arriba, 2);
   c.camUp = arriba;

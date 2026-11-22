@@ -72,7 +72,8 @@ export function stepNivel(dt) {
   //   si es ≥ 0, la gravedad ya no te puede traer de vuelta: es la MISMA condición que v ≥ v_esc,
   //   pero sirve en cualquier punto del vuelo (no solo al despegar).
   // Esperamos a que estés 10 m arriba del mar, para que se alcance a ver el despegue.
-  if (def.meta && def.meta.escapar && progreso.paso === 'jugar' && player.state === 'vuelo') {
+  // (si una luna te lleva, tu velocidad está medida RESPECTO a la luna: esperamos a que salgas de su esfera de Hill)
+  if (def.meta && def.meta.escapar && progreso.paso === 'jugar' && player.state === 'vuelo' && !player.marco) {
     const P = mundo.planetas[0];
     const r = player.pos.distanceTo(P.c);
     const energia = 0.5 * player.vel.lengthSq() - GM(P) / r;
@@ -131,7 +132,7 @@ export function stepNivel(dt) {
     mostrarLunita(true);
     for (const k of piezas.carteles) if (k.userData.despues) k.visible = true;
     emitir('fragmento');
-    if (def.objetivos.fragmento) emitir('objetivo', def.objetivos.fragmento);
+    if (def.objetivos && def.objetivos.fragmento) emitir('objetivo', def.objetivos.fragmento);
   }
 }
 

@@ -22,13 +22,14 @@ import { THREE, V3, clamp, damp, tangent, anyPerp, moveTowards, rng } from './ut
 import { scene, toon, outline, orient, faceNormal, camera, ambienteActual } from './escena.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { CFG } from './config.js';
-import { makeBody, computeGravity, updateUp, collide, mundo, superficieEn, entradaACaja } from './fisica.js';
+import { makeBody, computeGravity, updateUp, collide, mundo, superficieEn, entradaACaja, rayoRelieve } from './fisica.js';
 import { input, keys } from './entrada.js';
 import { juego, ajustes, emitir, escuchar } from './estado.js';
 import { hurtEnemy } from './enemigos.js';
 import { shockwave } from './efectos.js';
 import { cam } from './camara.js';
 import { empezarCarga, pasoCarga, pasoVuelo } from './mecanicas/escape.js';
+import { pasoDeslizar, DESLIZ } from './keplerDatos.js';
 
 /* ---------------------------------------------------------
    DATOS DEL JUGADOR
@@ -46,6 +47,9 @@ export const player = Object.assign(makeBody(CFG.r), {
   acostado: 0, ojos: 1,    // para la cinemática del despertar
   carga: 0,                // velocidad cargada del supersalto (m/s)
   dashGround: false,
+  rapidez: 0,              // rapidez sobre el suelo (m/s): la cámara y el sonido de deslizar la usan
+  deslizando: false,       // Kepler: patinando sobre la nieve o el hielo
+  marco: null,             // Kepler: la luna en cuya esfera de Hill estás (te mueves con ella)
 });
 juego.jugador = player;
 
@@ -173,7 +177,7 @@ export function mostrarLunita(v) { pl.moon.visible = v; }
 /* ---------------------------------------------------------
    MOVIMIENTO
    --------------------------------------------------------- */
-const _mv = new V3(), _hv = new V3(), _t = new V3(), _t2 = new V3(), _camR = new V3(), _alt = new V3();
+const _mv = new V3(), _hv = new V3(), _t = new V3(), _t2 = new V3(), _camR = new V3(), _alt = new V3(), _vel = new V3(), _ur = new V3();
 
 /** Convierte el joystick/teclado en una dirección sobre el planeta, relativa a la cámara. */
 function moveInput(out) {
@@ -206,7 +210,7 @@ export function respawnPlayer() {
   p.vel.set(0, 0, 0); p.up.copy(ini.dir);
   tangent(p.facing, ini.mirar, ini.dir).normalize();
   p.hp = p.maxHP; p.state = 'normal'; p.invul = 2; p.carga = 0;
-  p.voidT = 0; p.launch = null; p.fijo = null; p.guiado = null;
+  p.voidT = 0; p.launch = null; p.fijo = null; p.guiado = null; p.rapidez = 0;
   p.seguro.copy(p.pos);
   computeGravity(p);
   cam.fwd.copy(p.facing); cam.up.copy(p.up);
@@ -275,20 +279,45 @@ export function stepPlayer(dt) {
     if (!p.grounded) p.airDash = false;
     p.dashDir.copy(mvLen > 0.2 ? mv : p.facing); tangent(p.dashDir, p.dashDir, p.up).normalize();
     p.facing.copy(p.dashDir); p.dashHit.clear(); p.dashGround = p.grounded;
+    // deslizando (Kepler) el dash SUMA rapidez en vez de cambiarla por la del dash
+    p.dashV = p.deslizando || haySlide() ? Math.max(CFG.dashSpeed, _hv.length() + 6) : CFG.dashSpeed;
     emitir('dash');
   }
   // SALTO (con "coyote time": puedes saltar un ratito después de salir de un borde)
   if (input.jumpQ > 0 && (p.grounded || p.coyote > 0) && (p.state === 'normal' || p.state === 'dash' || p.state === 'punch')) {
     input.jumpQ = 0; p.coyote = 0; vy = CFG.jump; p.jumping = true; p.jumpCut = false; p.grounded = false;
-    if (p.state === 'dash') _hv.copy(p.dashDir).multiplyScalar(CFG.dashSpeed * 0.75);   // dash + salto = salto largo
+    if (p.state === 'dash') _hv.copy(p.dashDir).multiplyScalar(Math.max(CFG.dashSpeed * 0.75, p.dashV || 0));   // dash + salto = salto largo
     p.state = 'normal'; p.land = -0.25;
     emitir('salto');
   }
   // salto variable: si sueltas el botón antes, sube menos
   if (p.jumping && !input.jumpHeld && vy > 0 && !p.jumpCut) { vy *= CFG.jumpCut; p.jumpCut = true; }
 
+  const slide = haySlide() && p.state === 'normal' && p.hurtT <= 0;
+  p.deslizando = false;
   switch (p.state) {
     case 'normal': case 'punch': {
+      if (slide && p.grounded) {
+        // DESLIZAR (Kepler): la gravedad empuja cuesta abajo, el roce y el aire frenan (keplerDatos.js)
+        _vel.copy(_hv).addScaledVector(p.up, vy).addScaledVector(p.gdir, p.gmag * dt);
+        _ur.copy(p.pos).sub(p.planet.c).normalize();
+        const mu = DESLIZ.mu[p.planet.relieve.tipoEn(_ur)];
+        pasoDeslizar(_vel, p.normal, p.up, p.gmag, mu, mv, dt);
+        vy = _vel.dot(p.up); tangent(_hv, _vel, p.up);
+        p.deslizando = true; p.suelo = mu;
+        break;
+      }
+      if (slide) {
+        // en el aire NO se frena: sigues con tu rapidez (solo el aire, y doblas un poco)
+        const v = _hv.length();
+        if (v > CFG.run) {
+          tangent(_t, mv, p.up);
+          if (_t.lengthSq() > 0.04) { _t2.copy(_hv).normalize().lerp(_t.normalize(), Math.min(1, 6 / v * dt)).normalize(); _hv.copy(_t2).multiplyScalar(v); }
+          _hv.multiplyScalar(Math.max(0, 1 - DESLIZ.c * v * dt));
+        } else moveTowards(_hv, _t.copy(mv).multiplyScalar(CFG.run), CFG.airAccel * dt);
+        vy -= p.gmag * dt;
+        break;
+      }
       const ctrl = p.hurtT > 0 ? 0.15 : (p.state === 'punch' ? 0.3 : 1);
       _t.copy(mv).multiplyScalar(CFG.run * ctrl);
       moveTowards(_hv, _t, (p.grounded ? CFG.groundAccel : CFG.airAccel) * dt);
@@ -298,9 +327,9 @@ export function stepPlayer(dt) {
     }
     case 'dash':
       p.t += dt; tangent(p.dashDir, p.dashDir, p.up).normalize();   // sigue la curvatura del planeta
-      _hv.copy(p.dashDir).multiplyScalar(CFG.dashSpeed);
+      _hv.copy(p.dashDir).multiplyScalar(p.dashV || CFG.dashSpeed);
       vy = p.dashGround ? -6 : 0;                                    // en el suelo se pega a la superficie
-      if (p.t >= CFG.dashTime) { p.state = 'normal'; _hv.multiplyScalar(CFG.dashKeep); }
+      if (p.t >= CFG.dashTime) { p.state = 'normal'; _hv.multiplyScalar(haySlide() ? (p.dashV - 4) / p.dashV : CFG.dashKeep); }
       break;
     case 'agacha': {
       // SÚPER SALTO con las botas: agachad@ (casi sin moverte) hasta que brilla; al soltar, ¡arriba!
@@ -362,7 +391,9 @@ export function stepPlayer(dt) {
     } else if (p.grounded && r > P.mar + p.r + 0.15) p.seguro.copy(p.pos);
   } else if (p.grounded) p.seguro.copy(p.pos);
 
-  if (mvLen > 0.1 && p.state === 'normal') { _t.copy(mv).normalize(); p.facing.lerp(_t, damp(14, dt)); }
+  p.rapidez = tangent(_t2, p.vel, p.up).length();
+  if (slide && p.rapidez > 3) { _t.copy(_t2).normalize(); p.facing.lerp(_t, damp(10, dt)); }   // patinando: miras hacia donde vas
+  else if (mvLen > 0.1 && p.state === 'normal') { _t.copy(mv).normalize(); p.facing.lerp(_t, damp(14, dt)); }
   tangent(p.facing, p.facing, p.up);
   if (p.facing.lengthSq() < 1e-6) anyPerp(p.facing, p.up);
   p.facing.normalize();
@@ -371,6 +402,11 @@ export function stepPlayer(dt) {
     for (const pad of juego.pads) if (p.pos.distanceTo(pad.pos) < 1.5) { startLaunch(pad); break; }
 
   revisarVacio(dt);
+}
+
+/** ¿Este nivel se patina? (Kepler: en el planeta con relieve; en las lunas se camina normal) */
+function haySlide() {
+  return !!(juego.nivel && juego.nivel.deslizar && player.planet && player.planet.relieve);
 }
 
 /** Lejos de todo planeta (gravedad casi cero) o sin vida → volver al inicio. */
@@ -425,7 +461,7 @@ export function hurtPlayer(dmg, awayN) {
 /* ---------------------------------------------------------
    VISUALES DEL JUGADOR
    --------------------------------------------------------- */
-const _sp = new V3(), _sn = new V3(), _q = new THREE.Quaternion();
+const _sp = new V3(), _sn = new V3(), _q = new THREE.Quaternion(), _relN = new V3();
 function rayHit(origin, dir) {   // raycast de la sombra hacia el centro del planeta
   let best = Infinity, hitS = null;
   for (const s of mundo.solidos) {
@@ -438,6 +474,11 @@ function rayHit(origin, dir) {   // raycast de la sombra hacia el centro del pla
   for (const s of mundo.planetas) if (s.quema) {
     _t.copy(origin).sub(s.c); const b = _t.dot(dir), c = _t.lengthSq() - s.mar * s.mar, disc = b * b - c;
     if (disc >= 0 && c > 0 && b < 0) { const tt = -b - Math.sqrt(disc); if (tt < best) { best = tt; hitS = s; } }
+  }
+  // relieve (montañas de Kepler): la sombra cae en el suelo de verdad, no en la esfera de abajo
+  for (const s of mundo.planetas) if (s.relieve) {
+    const tt = rayoRelieve(s, origin, dir, 30, 1);
+    if (tt < 30 && tt < best) { best = tt; hitS = s; _t.copy(origin).addScaledVector(dir, tt).sub(s.c).normalize(); n = s.relieve.normal(_t, _relN); }
   }
   // cajas (rocas de la superficie, el laberinto): la sombra cae en su cara de arriba
   for (const m of mundo.muros) {
@@ -469,6 +510,10 @@ export function updatePlayerVisuals(dt, elapsed) {
     sy = 1 - 0.28 * k; sx = sz = 1 + 0.14 * k;
     pl.body.position.x = p.superListo ? Math.sin(elapsed * 70) * 0.02 : 0;
   }
+  // patinando: agachad@, brazos abiertos e inclinad@ hacia adelante (más mientras más rápido)
+  const kPat = p.deslizando ? clamp((p.rapidez - 2) / 14, 0, 1) : 0;
+  pl.pat = (pl.pat || 0) + (kPat - (pl.pat || 0)) * damp(8, dt);
+  if (pl.pat > 0.01) { sy *= 1 - 0.14 * pl.pat; sx *= 1 + 0.06 * pl.pat; pl.body.rotation.x += 0.28 * pl.pat; }
   pl.body.scale.set(sx, sy, sz);
   // acostado en la cama de flores (cinemática): girar el cuerpo 90° para que mire al cielo
   pl.body.rotation.x -= Math.PI / 2 * p.acostado;
@@ -480,7 +525,8 @@ export function updatePlayerVisuals(dt, elapsed) {
   pl.eyes.scale.y = p.state === 'dormido' ? p.ojos : hurt ? 0.25 : (blink ? 0.1 : 1);
   const ma = elapsed * 1.8; pl.moon.position.set(Math.cos(ma) * 0.35, Math.sin(ma) * 0.12, Math.sin(ma) * 0.35);
   const sp = Math.min(1, tangent(_sp, p.vel, p.up).length() / CFG.run), sw = Math.sin(elapsed * 14) * 0.5 * sp * (p.grounded ? 1 : 0);
-  pl.arms[0].rotation.x = sw; pl.arms[1].rotation.x = -sw;
+  pl.arms[0].rotation.x = sw * (1 - pl.pat); pl.arms[1].rotation.x = -sw * (1 - pl.pat);
+  pl.arms[0].rotation.z = -0.6 - 0.9 * pl.pat; pl.arms[1].rotation.z = 0.6 + 0.9 * pl.pat;
   pl.head.getWorldQuaternion(_q); _q.invert().multiply(camera.quaternion); pl.ring.quaternion.copy(_q);
   pl.group.visible = !(p.invul > 0 && Math.floor(elapsed * 16) % 2 === 0);
   const brillo = p.state === 'pound' || p.state === 'poundWind' ? 0x664400 : p.state === 'carga' ? 0x224466

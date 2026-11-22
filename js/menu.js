@@ -138,6 +138,9 @@ escuchar('completo', ({ def, tiempo }) => {
     juego.modo = 'completo';
   }, 1300);
 });
-$('cSeguir').onclick = () => { $('completo').classList.add('oculto'); acciones.nivel(juego.nivel.numero); };
+$('cSeguir').onclick = () => {
+  $('completo').classList.add('oculto');
+  if (juego.nivel.numero < NIVELES.length) acciones.nivel(juego.nivel.numero); else acciones.menu();   // el último planeta hecho: vuelve al menú
+};
 $('cRepetir').onclick = () => { $('completo').classList.add('oculto'); acciones.nivel(juego.nivel.numero - 1); };
 $('cMenu').onclick = () => { $('completo').classList.add('oculto'); acciones.menu(); };

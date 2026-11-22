@@ -53,6 +53,7 @@ node pruebas/fisica.test.mjs
 node pruebas/formato.test.mjs
 node pruebas/pozo.test.mjs
 node pruebas/superficie.test.mjs
+node pruebas/kepler.test.mjs
 ```
 
 Revisa que `g` baje con `1/r²`, que `v_esc` sea correcta, que con 95 % de `v_esc` vuelvas a caer y con 105 % no,
@@ -102,6 +103,10 @@ El juego sabe si juegas con teclado y mouse o con el dedo (lo último que usaste
 | `js/pozoGenerador.js`, `js/pozo.js` | El pozo de Ícaro: laberinto vertical procedural con semilla (`?semilla=`), validador con h = v²/2g y alcance del vuelo, paredes de capas instanciadas, checkpoints por repisa, rescate al caer y salida a la luz |
 | `js/superficieDatos.js`, `js/superficie.js` | Superficie de Ícaro: rocas sobre la arena que quema, fisuras, salto del susto (tiro parabólico), checkpoints y cinemática de salida de la grieta |
 | `js/meowl.js` | Jefe Meowl (picada exponencial), meowlitos, confeti con roce del aire y cañón hacia Kepler |
+| `js/keplerDatos.js` | Kepler sin DOM: relieve (grilla de alturas), camino de la carrera, lunas en órbita (3ª ley), deslizar, resorte (Hooke + tiro a la luna) y números de la pelea |
+| `js/kepler.js` | Kepler: dibujo del planeta, marco de la luna (esfera de Hill), resorte, carámbanos, avalanchas, nieve, checkpoints y cinemática de llegada |
+| `js/meimei.js` | MeiMei (leopardo de las nieves): carrera con resorte invisible, bolas de nieve, vuelo a la Luna 2, pelea de 3 fases con salto orbital y resorte de salida |
+| `js/niveles/nivel3-kepler.js` | Datos del nivel 3 (planeta, lunas, música, tarjetas de la pantalla de carga) |
 | `js/cineOvni.js` | Cinemática cartoon del ovni llegando a la arena (resorte amortiguado, estirar y aplastar) |
 | `herramientas/generar-sonidos.py` | Genera con matemática los sonidos de nave, tensión, jugador y espacio (`python3 herramientas/generar-sonidos.py`) |
 | `js/audio.js` + `sonidos/` | Sonidos (Web Audio): escucha los `emitir(...)` del juego, desbloqueo al primer toque, silencio y volúmenes |
