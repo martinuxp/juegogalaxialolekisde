@@ -10,6 +10,7 @@
      · fecha: el día del cambio (hora de Chile)
    ========================================================= */
 export const HISTORIAL = [
+  { v: '0.22', fecha: '24 nov', cambios: 'Kepler más ágil: ya no esperas a la Luna 2 en el resorte (el reloj de las órbitas se ajusta para que llegue justo contigo), el salto en la luna tiene tope y ya no te saca hacia el planeta, y MeiMei derrapa unos 10 m y frena su salto orbital en vez de dar vueltas a la luna' },
   { v: '0.21', fecha: '22 nov', cambios: 'Kepler (nivel 3): carrera patinando por un planeta de montañas nevadas detrás de MeiMei, la leopardo de las nieves que robó un fragmento de la luna. Deslizar con pendiente, roce y aire, carámbanos y avalanchas, lunas en órbita de verdad (3ª ley de Kepler), resorte que apunta adelantado a la Luna 2, pelea en la luna con salto orbital y resorte de salida a Aestus. Música de muxp con bucle por crossfade' },
   { v: '0.20', fecha: '20 nov', cambios: 'Ícaro: meowlitos escondidos que salen del suelo en el laberinto y de la arena en el camino, más gatos-alien en el laberinto, ruinas del desierto sólidas (columnas, arco, obeliscos, estatua) y música: la pelea de la cueva suena en el camino y la de Meowl entra con crossfade' },
   { v: '0.19', fecha: '20 nov', cambios: 'Ícaro desde arriba: desierto de arena hirviendo que quema, islas y pasillos de roca, fisuras que piden las botas, cinemática al salir de la grieta, jefe Meowl con sus meowlitos, confeti y cañón a Kepler. Sonidos nuevos del desierto y de la pelea' },

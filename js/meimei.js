@@ -55,8 +55,9 @@ export const ELASTICO = { distancia: 20, k: 1.0, b: 1.2, empuje: 4, vCorre: 13, 
 /* constantes de la pelea */
 export const PELEA_MEI = {
   H: 1.8,                // altura del salto (m)
-  vDerrape: 8,           // rapidez mínima al caer (m/s)
-  muFrena: 0.35,         // roce efectivo: el hielo solo da μ = 0,012, ella frena con las garras
+  vDerrape: K.PELEA.vDerrape,  // rapidez al caer: entre 6 y 10 m/s (si no, patinaba media luna)
+  muFrena: K.PELEA.muFrena,    // roce efectivo: el hielo solo da μ = 0,012, ella frena con las garras (a = 0,8·6 = 4,8 m/s²)
+  pasada: 25,            // en el salto orbital, frena 25 m después de pasar por encima tuyo
   mareo: 3.4,            // s que queda mareada
   ataquesCansa: 4,       // si no choca en 4 saltos, se cansa (también queda mareada)
 };
@@ -341,7 +342,7 @@ function pasoEspera(dt) {
 }
 
 /* ---------- vuelo a la Luna 2: salto de rana con la gravedad de Kepler (igual que pasoNewton) ---------- */
-const _a = new V3(), _b = new V3(), _c = new V3();
+const _a = new V3(), _b = new V3(), _c = new V3(), _pd = new V3();
 function gravKepler(pos, out) { const r = pos.length(); return out.copy(pos).multiplyScalar(-K.GM_K / (r * r * r)); }
 function pasoVuela(dt) {
   mei.t += dt;
@@ -446,7 +447,7 @@ const playerLocal = (out = new V3()) => out.copy(player.pos).sub(P2().c);
 function pasoPelea(dt) {
   mei.t += dt;
   mei.flash = Math.max(0, mei.flash - dt);
-  const pl = playerLocal(_c), pDir = _b.copy(pl).normalize();
+  const pl = playerLocal(_c), pDir = _pd.copy(pl).normalize();
   const ang = Math.acos(clamp(pDir.dot(mei.dir), -1, 1)), dist = ang * RL;   // distancia por la superficie
   switch (mei.f) {
     case 'intro':
@@ -457,7 +458,7 @@ function pasoPelea(dt) {
       // se acerca hasta ~9 m, de lado (rodeándote)
       mirarA(pDir);
       mei.pose = 'corre';
-      if (dist > 9) caminar(5.5 * dt);
+      if (dist > 9) caminar((dist > 20 ? 11 : 5.5) * dt);        // si quedó lejos, vuelve corriendo
       if (mei.t > mei.espera) {
         if (mei.fase >= 2 && !mei.tiro && Math.random() < 0.6) { mei.f = 'lanza'; mei.t = 0; mei.lanzadas = 0; mei.tiro = true; break; }
         mei.tiro = false;
@@ -480,7 +481,7 @@ function pasoPelea(dt) {
         // TIRO PARABÓLICO en la gravedad de la luna: cima H → v_y = √(2·g·H), vuelo t = 2·v_y/g
         const g = L2.g, vy = Math.sqrt(2 * g * PELEA_MEI.H), tVuelo = 2 * vy / g;
         mei.salto = { de: mei.dir.clone(), a: pDir.clone(), vy, tVuelo, ang };
-        mei.vt = Math.max(PELEA_MEI.vDerrape, dist / tVuelo);
+        mei.vt = clamp(dist / tVuelo, PELEA_MEI.vDerrape[0], PELEA_MEI.vDerrape[1]);
         mei.f = 'salto'; mei.t = 0; mei.pego = false;
         emitir('meimeiSalta');
       }
@@ -516,7 +517,7 @@ function pasoPelea(dt) {
         // SALTO ORBITAL: a 1,5 m del suelo, con v = √(G·m/r) queda en órbita circular
         mei.local.copy(mei.dir).multiplyScalar(RL + K.PELEA.alturaOrbita);
         mei.velL.copy(mei.facing).multiplyScalar(K.PELEA.vOrbita());
-        mei.f = 'orbita'; mei.t = 0; mei.pego = false;
+        mei.f = 'orbita'; mei.t = 0; mei.pego = false; mei.frenada = false; mei.yaPaso = false; mei.angMin = Infinity;
         emitir('meimeiOrbita');
       }
       break;
@@ -532,7 +533,20 @@ function pasoPelea(dt) {
       mei.facing.copy(mei.velL).normalize();
       mei.pose = 'vuela';
       tocarJugador(true, true);
-      if (mei.t > K.PELEA.tOrbita()) { mei.h = 0; mei.ataques++; acechar(0.6); emitir('meimeiAterriza'); }
+      // ¿ya pasó por encima tuyo? (el ángulo entre ella y tú, visto desde el centro de la luna, crece de nuevo)
+      const angP = Math.acos(clamp(mei.dir.dot(pDir), -1, 1)) * RL;
+      // (pasó cuando la distancia a ti dejó de achicarse y ya crece 2 m)
+      mei.angMin = Math.min(mei.angMin, angP);
+      if (!mei.yaPaso && angP > mei.angMin + 2) mei.yaPaso = true;
+      // FRENA: 25 m después de pasarte (o a los 6 s, que es menos de media vuelta). Con menos que la velocidad orbital
+      // la órbita se vuelve una elipse que choca con el suelo: cae enseguida
+      if (!mei.frenada && ((mei.yaPaso && angP > PELEA_MEI.pasada) || mei.t > Math.min(6, K.PELEA.tOrbita() / 2))) {
+        mei.frenada = true; mei.velL.multiplyScalar(K.PELEA.frenoOrbita); emitir('meimeiFrena');
+      }
+      if (mei.frenada && r2 <= RL + RM * 0.85) {
+        // aterrizaje forzoso: queda mareada (¡ahí le caes encima!)
+        mei.h = 0; mei.ataques = 0; marear(); cam.shake = 0.5; emitir('meimeiChoca');
+      }
       break;
     }
     case 'mareada':
@@ -680,7 +694,7 @@ export function direccionSalida(t, out = new V3()) {
 }
 /** ¿Cuánto del disparo va en la dirección de la luna? (1 = todo) */
 export function alineacionSalida(t) { return direccionSalida(t, _a).dot(K.velLuna(L2, t, _b).normalize()); }
-function esperaSalida(t) {
+export function esperaSalida(t) {
   for (let k = 0; k < 120; k++) if (alineacionSalida(t + k * 0.5) >= 0.6) return k * 0.5;
   return 0;
 }

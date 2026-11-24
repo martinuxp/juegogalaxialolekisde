@@ -129,5 +129,30 @@ for (const L of K.LUNAS) {
   revisar('con el resorte de salida escapas (energía ≥ 0)', E > 0, `v total ≈ ${f2(vTot)} m/s, E = ${Math.round(E)} J/kg`);
 }
 
+// 8) ARREGLOS 0.22: el derrape de MeiMei es corto, el salto orbital no da la vuelta y el salto queda en la luna
+{
+  // derrape: frena con a = μ·g → distancia d = v²/(2·μ·g)
+  const a = K.PELEA.muFrena * L2.g, vM = K.PELEA.vDerrape[1], d = vM * vM / (2 * a);
+  revisar('el derrape más largo mide menos de 11 m', d < 11, `d = v²/2μg = ${f2(d)} m (antes podía dar media vuelta a la luna)`);
+  // salto orbital frenado a 0,7·v: la elipse baja al suelo
+  const r0 = L2.R + K.PELEA.alturaOrbita, p = new V3(r0, 0, 0), v = new V3(0, 0, K.PELEA.vOrbita() * K.PELEA.frenoOrbita);
+  let t = 0; const dt = 1 / 120;
+  while (p.length() > L2.R + 0.98 && t < 10) {
+    let r = p.length(); v.addScaledVector(p, -L2.gm / r ** 3 * dt / 2); p.addScaledVector(v, dt);
+    r = p.length(); v.addScaledVector(p, -L2.gm / r ** 3 * dt / 2); t += dt;
+  }
+  revisar('frenada a 0,7·v, cae al suelo enseguida', t < 3, `en ${f2(t)} s (una vuelta completa eran ${f2(K.PELEA.tOrbita())} s)`);
+  // tope del salto: con v_r = v_tope(R) la cima queda adentro de la esfera de Hill
+  const v0 = K.PELEA.vTope(L2.R + 1), q = new V3(L2.R + 1, 0, 0), w = new V3(v0, 0, 0);
+  let rMax = 0;
+  for (let i = 0; i < 120 * 20; i++) {
+    let r = q.length(); w.addScaledVector(q, -L2.gm / r ** 3 * dt / 2); q.addScaledVector(w, dt);
+    r = q.length(); w.addScaledVector(q, -L2.gm / r ** 3 * dt / 2); rMax = Math.max(rMax, r);
+    if (r < L2.R + 1 && w.dot(q) < 0) break;     // volvió al suelo
+  }
+  revisar('con el tope, el salto más alto no sale de la esfera de Hill', rMax < L2.hill - 5, `v_tope = ${f2(v0)} m/s, cima r = ${f2(rMax)} m < r_Hill = ${f2(L2.hill)} m`);
+  revisar('sin el tope, el súper salto (20 m/s) sí salía', 0.5 * 20 ** 2 - L2.gm / (L2.R + 1) > -L2.gm / L2.hill, 'por eso Kepler te tiraba al planeta');
+}
+
 console.log(fallas ? `\n${fallas} prueba(s) fallaron` : '\nTodas las pruebas de Kepler pasaron');
 process.exit(fallas ? 1 : 0);
