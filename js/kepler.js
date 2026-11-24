@@ -26,7 +26,7 @@ import { cam, camaraAlInicio, moverCamara } from './camara.js';
 import { mostrarHUD, toast } from './ui.js';
 import { limpiarEntrada, input } from './entrada.js';
 import * as K from './keplerDatos.js';
-import { mei, construirMeiMei, pasoMeiMei, animarMeiMei, carreraDesde, peleaDesde, colocarMeiMei, mostrarMeiMei, poseMeiMei } from './meimei.js';
+import { mei, construirMeiMei, pasoMeiMei, animarMeiMei, carreraDesde, peleaDesde, colocarMeiMei, mostrarMeiMei, poseMeiMei, esperaSalida } from './meimei.js';
 
 const $ = id => document.getElementById(id);
 
@@ -40,6 +40,7 @@ export const kep = {
   sP: 0, iP: -1, lateral: 0, // dónde vas en el camino (s, metros al costado)
   tramo: 0, lejosT: 0, perdiendo: false,
   resorte: null,             // { base, g, plato, resortes, comp, estado, sol, tEspera, ventanas, calc }
+  ritmo: 1, ritmoObj: 1, vSuave: 10, tRitmo: 0,   // RITMO del reloj de las órbitas (ayuda del juego, ver calcularRitmo)
   atrapa: 0,                 // s que quedan de la "atrapada" al entrar a la esfera de Hill
   carambanos: [], avalanchas: [], nieve: null, domo: null, sol: null,
   enLuna: false, pelea: false, ganado: false,
@@ -52,7 +53,7 @@ export const P_LUNA2 = 2;     // índice de la Luna 2 en mundo.planetas (0 = Kep
    ========================================================= */
 export function construirKepler(grupo, planetas) {
   const rel = relieveKepler();
-  kep.t = 0; kep.tramo = 0; kep.lejosT = 0; kep.perdiendo = false; kep.atrapa = 0;
+  kep.t = 0; kep.ritmo = 1; kep.ritmoObj = 1; kep.vSuave = 10; kep.tRitmo = 0; kep.tramo = 0; kep.lejosT = 0; kep.perdiendo = false; kep.atrapa = 0;
   kep.iP = -1; kep.enLuna = false; kep.pelea = false; kep.ganado = false;
   grupo.add(crearTerreno(rel));
   grupo.add(crearCielo());
@@ -269,7 +270,8 @@ function ponerSombras() {
    ========================================================= */
 const _d = new V3(), _vl = new V3();
 export function antesDelPaso(dt) {
-  kep.t += dt;
+  calcularRitmo(dt);
+  kep.t += dt * kep.ritmo;
   for (const l of kep.lunas) {
     l.prev.copy(l.P.c);
     K.posLuna(l.L, kep.t, l.P.c);
@@ -291,7 +293,105 @@ export function antesDelPaso(dt) {
     _d.copy(player.marco.c).sub(player.pos).normalize();
     player.vel.addScaledVector(_d, 6 * dt);            // y te acerca un poco a la luna
   }
+  topeSalto();
   kep.ultimaPos.copy(player.pos);
+}
+
+/* =========================================================
+   EL RITMO DEL RELOJ (AYUDA DEL JUEGO, no es física)
+   ---------------------------------------------------------
+   Problema: el resorte solo llega a la Luna 2 unos 20 s de cada
+   T = 55,8 s. Si llegabas en el momento malo, esperabas parad@ y
+   la persecución se moría.
+   Arreglo: mientras corres, el juego calcula cuándo vas a llegar
+     t_llega = (distancia que falta) / (tu rapidez)
+   y adelanta o atrasa un poco el reloj de las órbitas para que la
+   ventana esté abierta justo cuando llegas:
+     ritmo = 1 + desfase / t_llega     (entre 0,4 y 2,2)
+   Las órbitas siguen siendo las mismas (mismo camino, mismo T²/a³);
+   solo cambia qué tan rápido corre el reloj del cielo.
+   IMPORTANTE: mientras alguien vuela hacia la luna, o estás en la luna
+   peleando, el ritmo es 1 exacto: ahí manda la física de verdad.
+   ========================================================= */
+function calcularRitmo(dt) {
+  const R = kep.resorte, p = player;
+  let obj = 1, directo = false;
+  const listo = R && R.ventanas && R.calc >= R.ventanas.length;
+  const vuelaAlguien = p.state === 'vuelo' || mei.modo === 'vuela' || kep.atrapa > 0;
+  if (vuelaAlguien || juego.modo !== 'juego') { kep.ritmo = 1; kep.ritmoObj = 1; return; }
+  if (kep.enLuna) {
+    // en la luna: solo se apura mientras esperas parad@ en el resorte de salida
+    const S = mei.salida;
+    if (S && S.estado === 'espera' && esperaSalida(kep.t) > 0.5) obj = 3;
+    else directo = true;
+  } else if (listo && R.estado === 'espera') {
+    obj = proximaVentana() > 0.5 ? 3 : 1;                // parad@ en el plato y la luna no llega: el cielo se apura
+    if (obj === 1) directo = true;
+  } else if (listo && R.estado === 'libre' && kep.sP < K.S_RESORTE + 5 && p.planet === mundo.planetas[0]) {
+    // corriendo: ¿cuándo llegas?
+    kep.vSuave += (Math.max(6, p.vel.length()) - kep.vSuave) * damp(1.5, dt);
+    const falta = Math.max(0, K.S_RESORTE - kep.sP);
+    if (falta < 600) {
+      kep.tRitmo -= dt;
+      if (kep.tRitmo <= 0) { kep.tRitmo = 0.25; kep.ritmoObj = ritmoPara(falta / Math.max(8, kep.vSuave)); }
+      obj = kep.ritmoObj;
+    }
+  } else directo = true;
+  if (directo) { kep.ritmo = 1; return; }
+  kep.ritmo += (obj - kep.ritmo) * damp(3, dt);
+}
+/** El ritmo que hace que la ventana esté abierta cuando llegues (t_llega en segundos reales). */
+function ritmoPara(tLlega) {
+  const R = kep.resorte, L = K.LUNAS[1], n = R.ventanas.length;
+  const tl = Math.max(tLlega, 3);
+  const llega = kep.t + tl + 1;                          // +1 s: subirte al plato y comprimirlo
+  // ¿cuál es el instante de la órbita más cercano a "llega" en que hay un tiro corto (≤ 10 s de vuelo)
+  // y además el anterior también sirve (así MeiMei, que va 20 m adelante, también alcanza)?
+  const bueno = i => { const a = R.ventanas[((i % n) + n) % n], b = R.ventanas[(((i - 4) % n) + n) % n]; return a != null && a <= 10 && b != null; };
+  const i0 = Math.round(llega / 0.5);
+  let mejor = null;
+  for (let k = 0; k <= n; k++) {
+    for (const sg of k ? [1, -1] : [1]) {
+      const i = i0 + sg * k;
+      if (!bueno(i)) continue;
+      const desfase = i * 0.5 - llega;                   // + = hay que adelantar el reloj
+      if (desfase < -0.6 * tl || desfase > 1.2 * tl) continue;
+      if (!mejor || Math.abs(desfase) < Math.abs(mejor)) mejor = desfase;
+    }
+    if (mejor !== null) break;
+  }
+  if (mejor === null) return 2.2;                        // falta mucho: apúrate hasta encontrar una
+  return clamp(1 + mejor / tl, 0.4, 2.2);
+}
+
+/* =========================================================
+   TOPE DEL SALTO EN LA LUNA
+   ---------------------------------------------------------
+   La Luna 2 es chica: v_esc = √(2Gm/R) = √(2·7350/35) ≈ 20,5 m/s.
+   El súper salto sale a 20 m/s: ¡casi escapas! Y con 14 m/s ya
+   pasabas el borde de la esfera de Hill (57,8 m), donde manda
+   Kepler y te tiraba al planeta.
+   Arreglo con ENERGÍA: para que lo más alto del salto quede en
+   r_tope = r_Hill − 8 m, la energía de subida no puede pasar de
+     ½·v_r² − Gm/r  ≤  −Gm/r_tope   →   v_r ≤ √(2Gm(1/r − 1/r_tope))
+   En el suelo da ≈ 11 m/s (unos 15 m de salto). Si vas más rápido
+   hacia arriba, el juego te deja en ese tope (ayuda del juego).
+   El resorte de salida (estado 'vuelo') no se topa: ese sí escapa.
+   ========================================================= */
+const _up = new V3();
+function topeSalto() {
+  const p = player, P = p.marco;
+  if (!P || p.state === 'vuelo') return;
+  const l = kep.lunas.find(x => x.P === P); if (!l || l.L !== K.LUNAS[1]) return;   // la pelea es en la Luna 2
+  _up.copy(p.pos).sub(P.c);
+  const r = _up.length(); if (r < 1e-6) return;
+  _up.divideScalar(r);
+  const rTope = l.L.hill - K.PELEA.margenTope;
+  const vr = p.vel.dot(_up);
+  if (vr <= 0) return;
+  if (r >= rTope) { p.vel.addScaledVector(_up, -vr); return; }      // ya en el techo: no sigues subiendo
+  const vMax = K.PELEA.vTope(r);
+  if (vr > vMax) p.vel.addScaledVector(_up, vMax - vr);
 }
 function revisarMarco(b, teletransporte) {
   let dentro = null;
@@ -399,7 +499,8 @@ function calcularVentanas() {
   const lote = () => {
     if (!kep.resorte || kep.resorte !== R) return;
     // uno por vez (cada uno simula ~300 tiros: unos 12 ms) para no trabar el juego
-    R.ventanas[R.calc] = !!K.tiroALaLuna(R.base, R.calc * 0.5, 1 / 30); R.calc++;
+    const sol = K.tiroALaLuna(R.base, R.calc * 0.5, 1 / 30);
+    R.ventanas[R.calc] = sol ? sol.tVuelo : null; R.calc++;   // null = no llega; número = s de vuelo
     if (R.calc < n) setTimeout(lote, 16);
   };
   setTimeout(lote, 200);
@@ -411,7 +512,7 @@ export function proximaVentana(t = kep.t) {
   const n = R.ventanas.length;
   for (let k = 0; k < n; k++) {
     const i = Math.floor(((t + k * 0.5) % L.T) / 0.5) % n;
-    if (R.ventanas[i]) return k * 0.5;
+    if (R.ventanas[i] != null) return k * 0.5;
   }
   return 99;
 }

@@ -461,4 +461,10 @@ export const PELEA = {
   // escapar de Kepler desde la Luna 2: v_esc = √(2·G·M / a) = √2 · v_luna
   vEscape: () => Math.sqrt(2 * GM_K / LUNAS[1].a),
   vSalida: 32,                                  // el resorte final (m/s, respecto a la luna)
+  // el derrape de MeiMei: cae entre 6 y 10 m/s y frena con a = μ·g (μ = 0,8 con las garras)
+  vDerrape: [6, 10], muFrena: 0.8,
+  frenoOrbita: 0.7,                             // en el salto orbital se frena a 0,7·v: la órbita se vuelve elipse y cae
+  // TOPE DEL SALTO (ayuda del juego): lo más alto de un salto queda en r_tope = r_Hill − 8 m
+  margenTope: 8,
+  vTope: r => Math.sqrt(Math.max(0, 2 * LUNAS[1].gm * (1 / r - 1 / (LUNAS[1].hill - 8)))),
 };

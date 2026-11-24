@@ -750,6 +750,7 @@ for (const n of ['resortePisa', 'resorteCarga', 'resorteSuelta', 'bolaTira', 'me
 escuchar('meimeiSeVa', () => sonar('meimeiRisa', { tono: 1.1 }));
 escuchar('meimeiLlama', () => sonar('meimeiRisa', { tono: 0.9 }));
 escuchar('meimeiHuye', () => sonar('meimeiSalta', { tono: 1.15 }));
+escuchar('meimeiFrena', () => sonar('meimeiDerrapa', { tono: 1.2 }));
 escuchar('meimeiMareada', () => sonar('meowlMareado'));
 escuchar('meimeiCansada', () => sonar('meowlMareado', { tono: 0.85 }));
 escuchar('meimeiAterriza', () => sonar('tocaSuelo'));
