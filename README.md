@@ -97,6 +97,7 @@ El juego sabe si juegas con teclado y mouse o con el dedo (lo último que usaste
 | `js/columba3d.js`, `js/menu.js` | Playa del menú (con la marea) y personalización |
 | `js/despertar.js` | Diálogo inicial y cinemática del despertar |
 | `js/camara.js`, `js/entrada.js`, `js/ui.js` | Cámara, controles y HUD |
+| `js/mision.js` | Misión actual en pantalla (franja de peligro): qué hacer en cada parte de cada planeta |
 | `js/dialogo.js` | Caja de diálogo de los carteles (pausa el juego) |
 | `js/cineIcaro.js` | Llegada a Ícaro (choque con el cinturón, caída a la grieta, despertar) y la charla de la cueva con la personaje misteriosa (planos del guion, suavizado exponencial) |
 | `js/cueva.js`, `js/misteriosa.js` | Decorado de la cueva de dunas (esfera invisible de R = 2 000 m) y la personaje misteriosa (modelo y gestos por código) |

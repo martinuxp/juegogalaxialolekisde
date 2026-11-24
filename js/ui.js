@@ -6,7 +6,7 @@
    muestra. Se entera de lo que pasa escuchando eventos
    ('vida', 'objetivo', 'fragmento', 'despegue', ...).
    ========================================================= */
-import { juego, ajustes, escuchar } from './estado.js';
+import { juego, ajustes, escuchar, emitir } from './estado.js';
 import { CFG } from './config.js';
 import { mundo, velocidadEscape } from './fisica.js';
 import { escape } from './mecanicas/escape.js';
@@ -75,7 +75,8 @@ escuchar('jefe', info => {
 
 export function tituloNivel() {
   const def = juego.nivel;
-  toast(`Nivel ${def.numero} · ${def.nombre}<small>${def.ley}</small>`, 3000);
+  if (def.laboratorio || def.editor) { toast(`Nivel ${def.numero} · ${def.nombre}<small>${def.ley}</small>`, 3000); return; }
+  emitir('anunciarNivel');                       // mision.js: planeta + misión actual (grande y después en la esquina)
 }
 
 /* ---------- botón SÚPER: aparece arriba del cañón (o si ya tienes el supersalto) ---------- */
@@ -169,4 +170,4 @@ export function actualizarHUD(dt) {
   hudDebug(dt);
 }
 
-export function mostrarHUD(v) { $('hud').classList.toggle('oculto', !v); if (!v) soltarMouse(); }   // sin HUD (menú, historia) el mouse queda libre
+export function mostrarHUD(v) { $('hud').classList.toggle('oculto', !v); $('mision').classList.toggle('apagada', !v); if (!v) soltarMouse(); }   // sin HUD (menú, historia) el mouse queda libre

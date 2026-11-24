@@ -23,12 +23,15 @@
    LA PELEA (en la Luna 2, 3 golpes; todo medido RESPECTO A LA LUNA):
      fase 1: SALTA sobre ti (parábola: h = v_y·t − ½·g·t², con la
              gravedad de la luna, g = 6: salta "lento", como en la
-             Luna de verdad) y al caer DERRAPA en el hielo. Si choca
-             con un pilar queda MAREADA: ¡salta sobre su cabeza!
+             Luna de verdad) y al caer DERRAPA en el hielo. Cuando
+             para, queda MAREADA (estrellas + flecha): ¡salta sobre
+             su cabeza o pégale con el puño! Si choca con un pilar
+             queda mareada más rato.
      fase 2: además te tira bolas de nieve y llama a 2 gatos-alien.
      fase 3: además da un SALTO ORBITAL: corre a v = √(G·m/r) y
              queda dando vueltas a la luna como un satélite, a
-             1,5 m del suelo. Cuando pase por tu lado, ¡cáele encima!
+             1,5 m del suelo. Esquívala: frena, cae y queda mareada.
+   REGLA ÚNICA (0.23): esquiva su ataque → queda mareada → pégale.
    Al ganar suelta el fragmento y escapa de la luna saltando con
    su velocidad de escape √(2·G·m/R). Aparece un resorte de salida.
    ========================================================= */
@@ -53,13 +56,21 @@ const RL = L2.R;
 /* constantes de la carrera */
 export const ELASTICO = { distancia: 20, k: 1.0, b: 1.2, empuje: 4, vCorre: 13, vMax: 40 };
 /* constantes de la pelea */
+/** Bolas de nieve: más seguido y más grandes (feedback 0.23). */
+export const BOLAS = {
+  cada: [2.2, 3.2],      // s entre tiros en la carrera (antes 4 a 6 s)
+  doble: 0.25,           // probabilidad de tirar dos seguidas
+  radio: 0.6,            // radio de la bola (antes 0,42 m)
+  toca: 1.5,             // en pleno vuelo te pega si su centro pasa a menos de 1,5 m del tuyo
+  impacto: 2.3,          // al caer, te pega si estás a menos de 2,3 m (antes 1,7 m)
+};
 export const PELEA_MEI = {
   H: 1.8,                // altura del salto (m)
   vDerrape: K.PELEA.vDerrape,  // rapidez al caer: entre 6 y 10 m/s (si no, patinaba media luna)
   muFrena: K.PELEA.muFrena,    // roce efectivo: el hielo solo da μ = 0,012, ella frena con las garras (a = 0,8·6 = 4,8 m/s²)
   pasada: 25,            // en el salto orbital, frena 25 m después de pasar por encima tuyo
-  mareo: 3.4,            // s que queda mareada
-  ataquesCansa: 4,       // si no choca en 4 saltos, se cansa (también queda mareada)
+  mareo: 2.6,            // s que queda mareada después de cada ataque
+  mareoPilar: 4.2,       // s si chocó con un pilar (premio por llevarla a uno)
 };
 
 let kep = null;           // el estado de kepler.js (para no importarlo en círculo)
@@ -199,8 +210,12 @@ function crearMeiMei(u) {
     estrellas.add(s);
   }
   g.add(estrellas);
+  // flecha amarilla que apunta a su cabeza cuando está mareada: "¡pégale ahora!"
+  const flecha = new THREE.Mesh(new THREE.ConeGeometry(u * 0.42, u * 0.8, 4), new THREE.MeshBasicMaterial({ color: 0xffe14a }));
+  flecha.rotation.x = Math.PI; flecha.position.set(0, u * 2.1, u * 0.6); flecha.visible = false;
+  outline(flecha, 0.06); g.add(flecha);
   const destello = halo('rgba(230,250,255,1)', u * 5); destello.material.opacity = 0; g.add(destello);
-  return { g, cuerpo, cabeza, patas, cola, frag, estrellas, destello, mats };
+  return { g, cuerpo, cabeza, patas, cola, frag, estrellas, flecha, destello, mats };
 }
 
 /* =========================================================
@@ -219,6 +234,10 @@ export function construirMeiMei(grupo, estadoKepler) {
   // en la Luna 2: el fragmento que suelta y el resorte de salida (hijos del grupo de la luna: se mueven con ella)
   const L = kep.lunas[1];
   mei.fragmento = crearFragmento(0.3); mei.fragmento.visible = false; L.g.add(mei.fragmento);
+  mei.fragCae = null;
+  const luz = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 30, 12, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xfff1b8, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  luz.position.y = 15; luz.visible = false; mei.fragmento.add(luz); mei.fragmento.userData.luz = luz;
   mei.salida = crearResorteSalida(); mei.salida.g.visible = false; L.g.add(mei.salida.g);
 }
 function crearResorteSalida() {
@@ -304,12 +323,19 @@ function pasoCarrera(dt) {
   mei.up.copy(mei.pos).normalize();
   mei.facing.copy(K.muestraEn(mei.s).t);
   mei.pose = mei.burla ? 'patita' : 'corre';
-  // bolas de nieve: cada 4 a 6 s, si estás a una distancia razonable
+  // bolas de nieve: cada 2,2 a 3,2 s (a veces de a dos), si estás a una distancia razonable
   mei.tBola -= dt;
   const gap = mei.s - kep.sP;
-  if (mei.tBola <= 0 && gap > 10 && gap < 45 && juego.modo === 'juego' && mei.s < K.S_LAGO[1]) {
-    mei.tBola = 4 + Math.random() * 2;
+  const puede = gap > 8 && gap < 55 && juego.modo === 'juego' && mei.s < K.S_RESORTE - 25;
+  if (mei.tBola <= 0 && puede) {
+    mei.tBola = BOLAS.cada[0] + Math.random() * (BOLAS.cada[1] - BOLAS.cada[0]);
     tirarBola(mundo.planetas[0], mei.pos, player.pos, player.vel, 1.1);
+    if (Math.random() < BOLAS.doble) mei.bolaExtra = 0.35;          // la segunda sale 0,35 s después
+  }
+  if (mei.bolaExtra > 0) {
+    mei.bolaExtra -= dt;
+    // la segunda apunta a donde estarías si NO frenas (adelanta más el tiro): te obliga a cambiar de carril
+    if (mei.bolaExtra <= 0 && puede) tirarBola(mundo.planetas[0], mei.pos, player.pos, _b.copy(player.vel).multiplyScalar(1.6), 1.1);
   }
   if (mei.s >= K.S_RESORTE - 3) {                                  // llegó al resorte
     mei.modo = 'espera'; mei.t = 0;
@@ -418,7 +444,7 @@ function empezarPelea() {
 export function peleaDesde(ganado) {
   limpiarBolas();
   colocarArena(mei.arena);
-  mei.fragmento.visible = false;
+  mei.fragmento.visible = false; mei.fragCae = null;
   if (ganado) {
     mei.modo = 'ganada'; mei.f = 'fuera'; mei.g.visible = false;
     mostrarLunita(true);
@@ -503,12 +529,8 @@ function pasoPelea(dt) {
       mei.pose = 'derrapa';
       tocarJugador(true);
       const pilar = chocaPilar();
-      if (pilar) { marear(); emitir('meimeiChoca'); cam.shake = 0.6; break; }
-      if (mei.vt <= 0) {
-        mei.ataques++;
-        if (mei.ataques >= PELEA_MEI.ataquesCansa) { marear(); emitir('meimeiCansada'); }
-        else acechar();
-      }
+      if (pilar) { marear(PELEA_MEI.mareoPilar); emitir('meimeiChoca'); cam.shake = 0.6; break; }
+      if (mei.vt <= 0) { mei.ataques++; marear(); emitir('meimeiCansada'); }     // cada ataque termina mareada: tu turno
       break;
     }
     case 'agachaOrbita':
@@ -532,7 +554,7 @@ function pasoPelea(dt) {
       mei.h = r2 - RL - RM * 0.85;
       mei.facing.copy(mei.velL).normalize();
       mei.pose = 'vuela';
-      tocarJugador(true, true);
+      tocarJugador(true);
       // ¿ya pasó por encima tuyo? (el ángulo entre ella y tú, visto desde el centro de la luna, crece de nuevo)
       const angP = Math.acos(clamp(mei.dir.dot(pDir), -1, 1)) * RL;
       // (pasó cuando la distancia a ti dejó de achicarse y ya crece 2 m)
@@ -544,8 +566,8 @@ function pasoPelea(dt) {
         mei.frenada = true; mei.velL.multiplyScalar(K.PELEA.frenoOrbita); emitir('meimeiFrena');
       }
       if (mei.frenada && r2 <= RL + RM * 0.85) {
-        // aterrizaje forzoso: queda mareada (¡ahí le caes encima!)
-        mei.h = 0; mei.ataques = 0; marear(); cam.shake = 0.5; emitir('meimeiChoca');
+        // aterrizaje forzoso: queda mareada más rato (¡ahí le pegas!)
+        mei.h = 0; mei.ataques++; marear(PELEA_MEI.mareoPilar); cam.shake = 0.5; emitir('meimeiChoca');
       }
       break;
     }
@@ -553,6 +575,7 @@ function pasoPelea(dt) {
       mei.pose = 'mareada';
       mei.mareo -= dt;
       tocarJugador(false);
+      if (mei.f === 'mareada' && punoLaToca()) { golpe(_c.copy(player.facing).negate(), _b.copy(mei.dir), false); break; }
       if (mei.f === 'mareada' && mei.mareo <= 0) { mei.ataques = 0; acechar(); }
       break;
     case 'golpe':
@@ -568,7 +591,15 @@ function pasoPelea(dt) {
   }
 }
 function acechar(espera = 1 + Math.random()) { mei.f = 'acecha'; mei.t = 0; mei.espera = espera; mei.h = 0; }
-function marear() { mei.f = 'mareada'; mei.t = 0; mei.mareo = PELEA_MEI.mareo; mei.vt = 0; mei.h = 0; emitir('meimeiMareada'); }
+function marear(seg = PELEA_MEI.mareo) { mei.f = 'mareada'; mei.t = 0; mei.mareo = seg; mei.vt = 0; mei.h = 0; emitir('meimeiMareada'); }
+/** ¿Tu puño la alcanza? (mismo alcance que el puño contra los aliens: CFG.punchReach y CFG.punchR) */
+function punoLaToca() {
+  const p = player;
+  if (p.state !== 'punch' || p.t < CFG.punchFrom || p.t > CFG.punchTo) return false;
+  posMundo(_a);
+  _c.copy(p.pos).addScaledVector(p.facing, CFG.punchReach);
+  return _c.distanceTo(_a) < CFG.punchR + RM;
+}
 function mirarA(pDir) {
   tangent(_a, pDir, mei.dir);
   if (_a.lengthSq() > 1e-8) mei.facing.lerp(_a.normalize(), 0.15).normalize();
@@ -592,7 +623,7 @@ function chocaPilar() {
 const posLocal = out => out.copy(mei.dir).multiplyScalar(RL + RM * 0.85 + mei.h);
 const posMundo = out => posLocal(out).add(P2().c);
 
-/** ¿Te toca? peligrosa = saltando, derrapando u orbitando (1 corazón). orbital = se le puede pegar desde arriba. */
+/** ¿Te toca? peligrosa = saltando, derrapando u orbitando (1 corazón). Si está mareada y caes encima, le pegas. */
 function tocarJugador(peligrosa, orbital = false) {
   const p = player;
   posMundo(_a);
@@ -605,12 +636,12 @@ function tocarJugador(peligrosa, orbital = false) {
   p.pos.copy(_a).addScaledVector(_c.normalize(), min);
   if (peligrosa && !mei.pego) { mei.pego = true; hurtPlayer(1, _c); emitir('meimeiPega'); }
 }
-function golpe(n, up) {
+function golpe(n, up, rebota = true) {
   mei.hp--; mei.f = 'golpe'; mei.t = 0; mei.mareo = 0; mei.flash = 0.3; mei.h = 0; mei.vt = 0;
   cam.shake = 0.7;
   emitir('meimeiGolpe', mei.hp);
   emitir('jefe', mei.hp > 0 ? { hp: mei.hp, max: 3, icono: 'meimei' } : null);
-  rebotar(player, n, up, input.jumpHeld ? CFG.stompHeld : CFG.stomp);
+  if (rebota) rebotar(player, n, up, input.jumpHeld ? CFG.stompHeld : CFG.stomp);
 }
 function rebotar(p, n, up, v) {
   tangent(p.vel, p.vel, p.up); p.vel.addScaledVector(p.up, v);
@@ -635,9 +666,11 @@ function ganar() {
   emitir('jefeVencido');
   for (const e of juego.enemigos) if (e.deMei && !e.dead) { e.dead = true; e.dieT = 0.3; }
   limpiarBolas();
-  // el fragmento cae a su lado (queda en la luna)
-  posLocal(mei.fragmento.position).addScaledVector(mei.facing, 1.6).setLength(RL + 0.6);
+  // el fragmento SE LE CAE: sale desde su pecho hacia arriba y adelante, y cae con la gravedad de la luna
+  posLocal(mei.fragmento.position).addScaledVector(mei.dir, 0.6);
+  mei.fragCae = { vel: _d.copy(mei.dir).multiplyScalar(4).addScaledVector(mei.facing, 2.5).clone(), t: 0 };
   mei.fragmento.visible = true;
+  mei.fragmento.userData.luz.visible = false;
   mei.malla.frag.visible = false;
   // y ella se va: salta hacia arriba con su velocidad de escape de la luna  v = √(2·G·m/R)
   mei.local.copy(mei.dir).multiplyScalar(RL + RM);
@@ -645,6 +678,39 @@ function ganar() {
   mei.pose = 'salto';
   emitir('meimeiHuye');
   toast('¡MeiMei soltó el fragmento!', 2400);
+}
+/**
+ * EL FRAGMENTO CAE (salto de rana con la gravedad de la luna, en sus coordenadas):
+ *   a = −G·m·r / |r|³
+ * Al tocar el suelo (r = R + 0,6) se queda ahí. Si cayó dentro de un pilar lo sacamos
+ * hacia afuera, y si en 4 s no aterrizó (no debería) lo dejamos en el suelo igual.
+ */
+const _d = new V3();
+function caeFragmento(dt) {
+  const F = mei.fragCae, p = mei.fragmento.position;
+  F.t += dt;
+  const r1 = p.length();
+  F.vel.addScaledVector(p, -L2.gm / (r1 * r1 * r1) * dt / 2);
+  p.addScaledVector(F.vel, dt);
+  const r2 = p.length();
+  F.vel.addScaledVector(p, -L2.gm / (r2 * r2 * r2) * dt / 2);
+  for (const pil of kep.lunas[1].pilares) {                  // los pilares lo atajan: rebota hacia afuera
+    _d.copy(p).sub(pil.local); const d = _d.length();
+    if (d < pil.R + 0.4) { p.copy(pil.local).addScaledVector(_d.normalize(), pil.R + 0.4); F.vel.addScaledVector(_d, -Math.min(0, F.vel.dot(_d)) * 1.3); }
+  }
+  if (r2 <= RL + 0.6 || F.t > 4) {
+    // al suelo; y si quedó tocando un pilar, lo corremos por la superficie hasta que quede libre
+    p.setLength(RL + 0.6);
+    for (let k = 0; k < 30; k++) {
+      const pil = kep.lunas[1].pilares.find(q => p.distanceTo(q.local) < q.R + 1.2);
+      if (!pil) break;
+      tangent(_d, _d.copy(p).sub(pil.local), p); p.addScaledVector(_d.normalize(), 0.5).setLength(RL + 0.6);
+    }
+    mei.fragCae = null;
+    mei.fragmento.quaternion.setFromUnitVectors(_d.set(0, 1, 0), p.clone().normalize());
+    mei.fragmento.userData.luz.visible = true;               // columna de luz: se ve desde lejos
+    emitir('meimeiAterriza');
+  }
 }
 function pasoGanada(dt) {
   mei.t += dt;
@@ -655,8 +721,9 @@ function pasoGanada(dt) {
     mei.dir.copy(mei.local).normalize(); mei.h = r - RL - RM * 0.85;
     if (mei.t > 3.5) { mei.f = 'fuera'; mei.g.visible = false; }
   }
-  // tomar el fragmento
-  if (mei.fragmento.visible) {
+  if (mei.fragCae) caeFragmento(dt);
+  // tomar el fragmento (ya en el suelo)
+  if (mei.fragmento.visible && !mei.fragCae) {
     _a.copy(mei.fragmento.position).add(P2().c);
     if (player.pos.distanceTo(_a) < 1.9) {
       mei.fragmento.visible = false;
@@ -752,7 +819,7 @@ function aviso(falta) {
    (g = el vector gravedad en el blanco: apunta al centro).
    Apunta a donde VAS a estar: P = tu posición + tu velocidad·t.
    ========================================================= */
-const geoBola = new THREE.IcosahedronGeometry(0.42, 1);
+const geoBola = new THREE.IcosahedronGeometry(BOLAS.radio, 1);
 const matBola = toon(0xffffff, {});
 function tirarBola(P, desde, aPos, aVel, t, enLaLuna = false) {
   const c = P.c;
@@ -767,7 +834,7 @@ function tirarBola(P, desde, aPos, aVel, t, enLaLuna = false) {
   const gv = u.clone().multiplyScalar(-g);
   const v0 = blanco.clone().sub(S).addScaledVector(gv, -0.5 * t * t).divideScalar(t);
   const m = outline(new THREE.Mesh(geoBola, matBola), 0.06);
-  const anillo = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.4, 24), new THREE.MeshBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide }));
+  const anillo = new THREE.Mesh(new THREE.RingGeometry(BOLAS.impacto - 0.6, BOLAS.impacto, 28), new THREE.MeshBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide }));
   anillo.renderOrder = 3;
   mei.grupo.add(m, anillo);
   mei.bolas.push({ P, enLaLuna, pos: S, vel: v0, m, anillo, blanco, t: 0, gm });
@@ -784,9 +851,11 @@ function pasoBolas(dt) {
     b.vel.addScaledVector(b.pos, -b.gm / (r2 * r2 * r2) * dt / 2);
     const u = _a.copy(b.pos).normalize();
     const suelo = b.enLaLuna ? RL : (kep.relieve ? kep.relieve().radio(u) : K.R);
-    if (r2 <= suelo + 0.4 || b.t > 4) {
-      _b.copy(b.pos).add(b.P.c);
-      if (player.pos.distanceTo(_b) < 1.7) hurtPlayer(1, _c.copy(player.pos).sub(_b));
+    _b.copy(b.pos).add(b.P.c);
+    // en pleno vuelo también pega (la bola es grande)
+    if (!b.pego && player.pos.distanceTo(_b) < BOLAS.toca) { b.pego = true; hurtPlayer(1, _c.copy(player.pos).sub(_b)); }
+    if (r2 <= suelo + BOLAS.radio || b.t > 4) {
+      if (!b.pego && player.pos.distanceTo(_b) < BOLAS.impacto) hurtPlayer(1, _c.copy(player.pos).sub(_b));
       emitir('bolaRompe', _b.distanceTo(player.pos));
       b.m.removeFromParent(); b.anillo.removeFromParent();
       mei.bolas.splice(i, 1);
@@ -845,6 +914,8 @@ export function animarMeiMei(dt, t) {
   });
   M.estrellas.visible = mei.pose === 'mareada';
   if (M.estrellas.visible) M.estrellas.rotation.y = t * 4;
+  M.flecha.visible = mei.modo === 'pelea' && mei.f === 'mareada';
+  if (M.flecha.visible) { M.flecha.position.y = RM * 2.5 + Math.abs(Math.sin(t * 6)) * RM * 0.4; M.flecha.rotation.y = t * 2; }
   const cargando = mei.f === 'destello' || mei.f === 'agachaOrbita';
   M.destello.material.opacity = cargando ? 0.5 + 0.4 * Math.sin(t * 30) : 0;
   M.destello.scale.setScalar(RM * (cargando ? 5 + mei.t * 4 : 5));
@@ -852,7 +923,7 @@ export function animarMeiMei(dt, t) {
   for (const m of M.mats) m.emissive.setHex(fl ? 0x775555 : 0x24262c);      // un poco de brillo propio: es blanca aunque el sol le llegue por atrás
   M.frag.rotation.y = t * 2; M.frag.position.y = -RM * 0.05 + Math.sin(t * 3) * 0.05;
   // fragmento suelto y resorte de salida
-  if (mei.fragmento && mei.fragmento.visible) { mei.fragmento.rotation.y = t * 1.5; }
+  if (mei.fragmento && mei.fragmento.visible) { mei.fragmento.userData.cristal.rotation.y = t * 1.5; }   // gira el cristal (el grupo queda parado sobre el suelo)
   const S = mei.salida;
   if (S && S.g.visible) {
     S.plato.position.y = 1.75 - S.comp * 1.2; S.resortes.scale.y = 1 - S.comp * 0.7;
