@@ -36,6 +36,7 @@ import { limpiarEntrada, input } from './entrada.js';
 import { pintarIconos } from './iconos.js';
 import './dialogo.js';
 import { actualizarAudio, _audio } from './audio.js';
+import { actualizarMision, _mision } from './mision.js';
 import { actualizarCineOvni } from './cineOvni.js';
 import { iniciarLlegada, actualizarCineIcaro, saltarCineIcaro, reanudarIcaro, _icaro } from './cineIcaro.js';
 import { NIVELES, LABORATORIO, SUPERFICIE_ICARO } from './niveles/index.js';
@@ -220,6 +221,7 @@ function frame(now) {
   if (!actualizarDespertar(dtCine) && !actualizarCineOvni(dtCine) && !actualizarCineDespegue(dtCine) && !actualizarCineIcaro(dtCine) && !actualizarCineSuperficie(dtCine) && !actualizarCineKepler(dtCine)) updateCamera(dt);
   renderer.render(scene, camera);
   if (jugando) actualizarHUD(dt);
+  actualizarMision(jugando ? dt : 0);
 }
 
 /* ---------- arranque ---------- */
@@ -230,7 +232,7 @@ requestAnimationFrame(frame);
 
 // gancho para pruebas automáticas (Playwright): permite avanzar la física a mano
 window.__game = {
-  juego, player, step, ajustes, input, cam, piezas, ovni, pelea, audio: _audio, despegue: _despegue,
+  juego, player, step, ajustes, input, cam, piezas, ovni, pelea, audio: _audio, mision: _mision, despegue: _despegue,
   enemies: () => juego.enemigos,
   jugarNivel: i => { limpiarEntrada(); empezarNivel(i); },
   laboratorio: () => { mostrarMenu(false); jugadorALaPlaya(false); cargarNivel(LABORATORIO); juego.modo = 'juego'; mostrarHUD(true); },

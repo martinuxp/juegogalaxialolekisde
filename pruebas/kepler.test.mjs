@@ -154,5 +154,18 @@ for (const L of K.LUNAS) {
   revisar('sin el tope, el súper salto (20 m/s) sí salía', 0.5 * 20 ** 2 - L2.gm / (L2.R + 1) > -L2.gm / L2.hill, 'por eso Kepler te tiraba al planeta');
 }
 
+// 9) EL FRAGMENTO QUE SUELTA MEIMEI (0.23): sale a 4 m/s hacia arriba y 2,5 m/s de lado (meimei.js ganar)
+//    y cae con la gravedad de la luna: tiene que volver al suelo pronto (4 m/s ≪ v_esc ≈ 20 m/s)
+{
+  const r0 = L2.R + 1.15 * 0.85 + 0.6, p = new V3(r0, 0, 0), v = new V3(4, 0, 2.5), dt = 1 / 120;
+  let t = 0;
+  while (p.length() > L2.R + 0.6 && t < 10) {
+    let r = p.length(); v.addScaledVector(p, -L2.gm / r ** 3 * dt / 2); p.addScaledVector(v, dt);
+    r = p.length(); v.addScaledVector(p, -L2.gm / r ** 3 * dt / 2); t += dt;
+  }
+  const lejos = Math.acos(p.clone().normalize().x) * L2.R;
+  revisar('el fragmento cae a la luna (no se escapa)', t < 3, `cae en ${f2(t)} s, a ${f2(lejos)} m de MeiMei`);
+}
+
 console.log(fallas ? `\n${fallas} prueba(s) fallaron` : '\nTodas las pruebas de Kepler pasaron');
 process.exit(fallas ? 1 : 0);
